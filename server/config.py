@@ -35,3 +35,8 @@ db.init_app(app)
 
 migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
+
+
+# Import models last, so Flask-Migrate can detect every table.
+# (At the bottom, not the top, to avoid a circular import: models.py itself imports db from this file.)
+import models  # noqa: E402,F401
