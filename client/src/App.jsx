@@ -5,6 +5,7 @@ import { Box, Button, Typography } from '@mui/material'
 import { useAuth } from './context/AuthContext.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
+import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 // TEMPORARY: stands in for the dashboard until it's built
 function DashboardPlaceholder() {
@@ -24,9 +25,15 @@ function App() {
   return (
     // Routes shows the FIRST Route whose path matches the address bar
     <Routes>
+      {/* Public pages: anyone can visit */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
-      <Route path="/" element={<DashboardPlaceholder />} />
+
+      {/* Private pages: ProtectedRoute checks login first, then
+          shows the matching page inside it (through its <Outlet />) */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<DashboardPlaceholder />} />
+      </Route>
     </Routes>
   )
 }
