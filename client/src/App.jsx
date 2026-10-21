@@ -7,18 +7,16 @@ import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import GuestRoute from './components/GuestRoute.jsx'
+import AppLayout from './components/AppLayout.jsx'
 
 
 // TEMPORARY: stands in for the dashboard until it's built
 function DashboardPlaceholder() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   return (
-    <Box sx={{ p: 4 }}>
+    <Box>
       <Typography variant="h3" color="primary">Dashboard</Typography>
-      <Typography sx={{ my: 2 }}>
-        {user ? `Logged in as ${user.username}` : 'Not logged in'}
-      </Typography>
-      <Button variant="outlined" onClick={logout}>Log out</Button>
+      <Typography sx={{ my: 2 }}>Logged in as {user.username}</Typography>
     </Box>
   )
 }
@@ -33,10 +31,12 @@ function App() {
         <Route path="/signup" element={<SignupPage />} />
       </Route>
 
-      {/* Private pages: ProtectedRoute checks login first, then
-          shows the matching page inside it (through its <Outlet />) */}
+      {/* Private pages: ProtectedRoute checks login first, then AppLayout
+          draws the sidebar, then the matching page appears inside it */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<DashboardPlaceholder />} />
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<DashboardPlaceholder />} />
+        </Route>
       </Route>
     </Routes>
   )
