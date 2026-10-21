@@ -17,10 +17,11 @@ from flask import g, request
 
 from config import app, db
 from auth import auth_bp, login_required
-from models import Recipient
+from models import Gift, Recipient
 
 # Plug in the auth routes: /api/signup, /api/login, /api/logout, & /api/check_session.
 app.register_blueprint(auth_bp)
+
 
 
 # ─── OWNERSHIP HELPERS ────────────────────────────────────────────────
@@ -44,6 +45,20 @@ def get_json_body():
     return data if isinstance(data, dict) else None
 
 
+def get_owned_gift(gift_id):
+    """Return the logged-in user's gift with this id, or None.
+
+    Gifts have no user_id of their own, so ownership is checked through their recipient:
+    join gifts to recipients, then keep only gifts whose recipient belongs to the current user.
+    """
+    return (
+        Gift.query
+        .join(Recipient)
+        .filter(Gift.id == gift_id, Recipient.user_id == g.current_user.id)
+        .first()
+    )
+
+
 # ─── RECIPIENT ROUTES ─────────────────────────────────────────────────
 # SEE LIST OF RECIPIENTS FOR THIS USER
 @app.get("/api/recipients")
@@ -58,7 +73,7 @@ def list_recipients():
         .order_by(Recipient.name)
         .all()
     )
-    return [recipient.to_dict() for recipient in recipients], 200
+    return [recipient.to_dict() for recipient in recipients], 200       # OK
 
 
 # CREATE A RECIPIENT
@@ -68,7 +83,7 @@ def create_recipient():
     """Add a recipient for the logged-in user. 201, or 400 invalid data."""
     data = get_json_body()
     if data is None:
-        return {"error": "Request body must be JSON."}, 400
+        return {"error": "Request body must be JSON."}, 400     # Bad Request
 
     try:
         # Model validators run here (name required, budget not negative, etc.),
@@ -81,11 +96,11 @@ def create_recipient():
             user=g.current_user,      # SECURITY: owner comes from the session, not request body
         )
     except ValueError as err:
-        return {"error": str(err)}, 400
+        return {"error": str(err)}, 400     # Bad request
 
     db.session.add(recipient)
     db.session.commit()
-    return recipient.to_dict(), 201
+    return recipient.to_dict(), 201     # Created
 
 
 # SEE INDIVIDUAL RECIPIENT BY ID
@@ -96,7 +111,7 @@ def get_recipient(recipient_id):
     200, or 404 if it doesn't exist/belongs to another user."""
     recipient = get_owned_recipient(recipient_id)
     if recipient is None:
-        return {"error": "Recipient not found."}, 404
+        return {"error": "Recipient not found."}, 404       # Not Found
 
     data = recipient.to_dict()
     # Checklist order: unpurchased ideas first, then purchased;
@@ -105,7 +120,7 @@ def get_recipient(recipient_id):
         gift.to_dict()
         for gift in sorted(recipient.gifts, key=lambda gift: (gift.purchased, -gift.id))    # -gift.id = newer first
     ]
-    return data, 200
+    return data, 200        #OK
 
 
 # Fields a user may edit.
@@ -120,11 +135,11 @@ def update_recipient(recipient_id):
     """Update any of a recipient's editable fields. 200, 400, or 404."""
     recipient = get_owned_recipient(recipient_id)
     if recipient is None:
-        return {"error": "Recipient not found."}, 404
+        return {"error": "Recipient not found."}, 404       # Not Found
 
     data = get_json_body()
     if data is None:
-        return {"error": "Request body must be JSON."}, 400
+        return {"error": "Request body must be JSON."}, 400     # Bad Request
 
     try:
         for field in RECIPIENT_FIELDS:
@@ -134,10 +149,10 @@ def update_recipient(recipient_id):
         # Undo any fields already changed in this loop,
         # so a request with one bad field changes nothing at all.
         db.session.rollback()
-        return {"error": str(err)}, 400
+        return {"error": str(err)}, 400     # Bad Request
 
     db.session.commit()
-    return recipient.to_dict(), 200
+    return recipient.to_dict(), 200     # OK
 
 
 # DELETE A RECIPIENT
@@ -147,11 +162,91 @@ def delete_recipient(recipient_id):
     """Delete a recipient and, through the cascade, all their gifts."""
     recipient = get_owned_recipient(recipient_id)
     if recipient is None:
-        return {"error": "Recipient not found."}, 404
+        return {"error": "Recipient not found."}, 404       # Not Found
 
     db.session.delete(recipient)
     db.session.commit()
-    return "", 204
+    return "", 204      # No Content
+
+
+# ─── GIFT ROUTES ──────────────────────────────────────────────────────
+# CREATE A GIFT IDEA (used by the gift form and the quick-add button)
+@app.post("/api/gifts")
+@login_required
+def create_gift():
+    """Save a gift idea for one of the user's recipients"""
+    data = get_json_body()
+    if data is None:
+        return {"error": "Request body must be JSON."}, 400     # Bad Request
+
+    recipient_id = data.get("recipient_id")
+    # bool excluded since Python treats True = 1
+    if not isinstance(recipient_id, int) or isinstance(recipient_id, bool):
+        return {"error": "recipient_id is required."}, 400      # Bad Request
+
+    recipient = get_owned_recipient(recipient_id)   # SECURITY: confirms recipient belongs to this user
+    if recipient is None:
+        return {"error": "Recipient not found."}, 404      # Not Found
+
+    try:
+        gift = Gift(
+            name=data.get("name"),
+            url=data.get("url"),
+            price=data.get("price"),
+            notes=data.get("notes"),
+            recipient=recipient,
+        )
+    except ValueError as err:
+        return {"error": str(err)}, 400     # Bad request
+
+    db.session.add(gift)
+    db.session.commit()
+    return gift.to_dict(), 201      # Created
+
+
+# Fields a user may edit.
+# recipient_id left out, so a gift can't move to another user's list
+GIFT_FIELDS = ("name", "url", "price", "notes", "purchased")
+
+
+# EDIT A GIFT, INCLUDING CHECKING IT OFF
+@app.patch("/api/gifts/<int:gift_id>")
+@login_required
+def update_gift(gift_id):
+    """Update a gift's editable fields.
+    Checking it off is {"purchased": true}."""
+    gift = get_owned_gift(gift_id)
+    if gift is None:
+        return {"error": "Gift not found."}, 404      # Not Found
+
+    data = get_json_body()
+    if data is None:
+        return {"error": "Request body must be JSON."}, 400     # Bad Request
+
+    try:
+        for field in GIFT_FIELDS:
+            if field in data:
+                setattr(gift, field, data[field])
+    except ValueError as err:
+        # Undo partial changes, one bad field means nothing saves
+        db.session.rollback()
+        return {"error": str(err)}, 400     # Bad Request
+
+    db.session.commit()
+    return gift.to_dict(), 200      # OK
+
+
+# DELETE A GIFT
+@app.delete("/api/gifts/<int:gift_id>")
+@login_required
+def delete_gift(gift_id):
+    gift = get_owned_gift(gift_id)
+    if gift is None:
+        return {"error": "Gift not found."}, 404      # Not Found
+
+    db.session.delete(gift)
+    db.session.commit()
+    return "", 204      #No Content
 
 
 # Only start the server when this file is run directly (not when it's imported).
