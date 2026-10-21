@@ -46,6 +46,7 @@ def client():
         db.session.remove()
         db.drop_all()
 
+
 @pytest.fixture
 def create_user(client):
     """A factory for making users in a test: create_user("sam").
@@ -62,3 +63,16 @@ def create_user(client):
         return user
 
     return _create_user
+
+
+@pytest.fixture
+def login_as(client):
+    """A helper for logging in during a test: login_as("sam").
+
+    Uses the real /api/login route, so the test client stores the
+    session cookie, and every later request is made as that user.
+    """
+    def _login_as(username, password="giftsecret1"):
+        return client.post("/api/login", json={"username": username, "password": password})
+
+    return _login_as
