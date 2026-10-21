@@ -13,6 +13,9 @@ another user's records can't be found at all. Requests for them get
 the same 404 as records that don't exist (never a 403, which would
 confirm the record exists).
 """
+
+from decimal import Decimal
+
 from flask import g, request
 
 from config import app, db
@@ -21,7 +24,6 @@ from models import Gift, Recipient
 
 # Plug in the auth routes: /api/signup, /api/login, /api/logout, & /api/check_session.
 app.register_blueprint(auth_bp)
-
 
 
 # ─── OWNERSHIP HELPERS ────────────────────────────────────────────────
@@ -246,7 +248,79 @@ def delete_gift(gift_id):
 
     db.session.delete(gift)
     db.session.commit()
-    return "", 204      #No Content
+    return "", 204      # No Content
+
+
+# ─── DASHBOARD ROUTE ──────────────────────────────────────────────────
+
+# How many recent ideas the homepage shows
+RECENT_IDEAS_LIMIT = 5
+
+
+# VIEW THE DASHBOARD/HOMEPAGE
+@app.get("/api/dashboard")
+@login_required
+def dashboard():
+    """Everything the homepage needs in one request.
+    Built for quick checks while shopping: "what's on everyone's list?"
+        - recipients: each recipient with budget, spent, and unpurchased ideas
+        - totals: overall numbers for the summary cards
+        - recent_ideas: the newest unpurchased ideas, each with its recipient's name
+    """
+    # RECIPIENT SUMMARIES:
+    recipients = (
+        Recipient.query
+        .filter_by(user_id=g.current_user.id)       # only this user's recipients
+        .order_by(Recipient.name)
+        .all()
+    )
+    recipient_summaries = []
+    for recipient in recipients:
+        summary = recipient.to_dict()
+        # only what's left to buy, newest first:
+        summary["ideas"] = [
+            gift.to_dict()
+            for gift in sorted(recipient.gifts, key=lambda gift: -gift.id)
+            if not gift.purchased
+        ]
+        recipient_summaries.append(summary)
+
+    # TOTALS:
+    # Decimal start values to keep money sums exact
+    total_budget = sum(
+        (r.budget for r in recipients if r.budget is not None),
+        Decimal("0")
+    )
+    total_spent = sum((r.spent for r in recipients), Decimal("0"))
+
+    # RECENTLY SAVED:
+    # Same ownership join as get_owned_gift: only gifts whose recipient belongs to this user.
+    # Purchased gifts are skipped.
+    recent_gifts = (
+        Gift.query
+        .join(Recipient)
+        .filter(Recipient.user_id == g.current_user.id, Gift.purchased.is_(False))
+        .order_by(Gift.created_at.desc(), Gift.id.desc())
+        .limit(RECENT_IDEAS_LIMIT)
+        .all()
+    )
+    recent_ideas = []
+    for gift in recent_gifts:
+        idea = gift.to_dict()
+        # add the name so the page shows 'Pottery class · Emma":
+        idea["recipient_name"] = gift.recipient.name
+        recent_ideas.append(idea)
+
+    return {
+        "recipients": recipient_summaries,
+        "totals": {
+            "recipients": len(recipients),
+            "ideas": sum(r.idea_count for r in recipients),
+            "budget": float(total_budget),
+            "spent": float(total_spent),
+        },
+        "recent_ideas": recent_ideas,
+    }, 200      # OK
 
 
 # Only start the server when this file is run directly (not when it's imported).
