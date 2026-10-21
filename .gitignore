@@ -1,6 +1,9 @@
 # Node / React (client)
 node_modules/
 
+# VS Code personal settings
+.vscode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
