@@ -45,6 +45,7 @@ def get_json_body():
 
 
 # ─── RECIPIENT ROUTES ─────────────────────────────────────────────────
+# SEE LIST OF RECIPIENTS FOR THIS USER
 @app.get("/api/recipients")
 @login_required
 def list_recipients():
@@ -60,6 +61,7 @@ def list_recipients():
     return [recipient.to_dict() for recipient in recipients], 200
 
 
+# CREATE A RECIPIENT
 @app.post("/api/recipients")
 @login_required
 def create_recipient():
@@ -84,6 +86,72 @@ def create_recipient():
     db.session.add(recipient)
     db.session.commit()
     return recipient.to_dict(), 201
+
+
+# SEE INDIVIDUAL RECIPIENT BY ID
+@app.get("/api/recipients/<int:recipient_id>")
+@login_required
+def get_recipient(recipient_id):
+    """One recipient with their gifts and spending.
+    200, or 404 if it doesn't exist/belongs to another user."""
+    recipient = get_owned_recipient(recipient_id)
+    if recipient is None:
+        return {"error": "Recipient not found."}, 404
+
+    data = recipient.to_dict()
+    # Checklist order: unpurchased ideas first, then purchased;
+    # newest first within each group (a higher id means added later).
+    data["gifts"] = [
+        gift.to_dict()
+        for gift in sorted(recipient.gifts, key=lambda gift: (gift.purchased, -gift.id))    # -gift.id = newer first
+    ]
+    return data, 200
+
+
+# Fields a user may edit.
+# Anything else in the body is ignored
+RECIPIENT_FIELDS = ("name", "relationship", "budget", "notes")
+
+
+# EDIT A RECIPIENT  (can only edit fields listed above)
+@app.patch("/api/recipients/<int:recipient_id>")
+@login_required
+def update_recipient(recipient_id):
+    """Update any of a recipient's editable fields. 200, 400, or 404."""
+    recipient = get_owned_recipient(recipient_id)
+    if recipient is None:
+        return {"error": "Recipient not found."}, 404
+
+    data = get_json_body()
+    if data is None:
+        return {"error": "Request body must be JSON."}, 400
+
+    try:
+        for field in RECIPIENT_FIELDS:
+            if field in data:
+                setattr(recipient, field, data[field])
+    except ValueError as err:
+        # Undo any fields already changed in this loop,
+        # so a request with one bad field changes nothing at all.
+        db.session.rollback()
+        return {"error": str(err)}, 400
+
+    db.session.commit()
+    return recipient.to_dict(), 200
+
+
+# DELETE A RECIPIENT
+@app.delete("/api/recipients/<int:recipient_id>")
+@login_required
+def delete_recipient(recipient_id):
+    """Delete a recipient and, through the cascade, all their gifts."""
+    recipient = get_owned_recipient(recipient_id)
+    if recipient is None:
+        return {"error": "Recipient not found."}, 404
+
+    db.session.delete(recipient)
+    db.session.commit()
+    return "", 204
 
 
 # Only start the server when this file is run directly (not when it's imported).
