@@ -5,6 +5,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 
 import App from './App.jsx'
+import { AuthProvider } from './context/AuthContext.jsx'
 import theme from './theme.js'
 
 createRoot(document.getElementById('root')).render(
@@ -14,7 +15,10 @@ createRoot(document.getElementById('root')).render(
       {/* Resets browser default styles and applies the theme's
           background color and font to the whole page */}
       <CssBaseline />
-      <App />
+      {/* Shares the logged-in user with every component in the app */}
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </ThemeProvider>
   </StrictMode>,
 )
