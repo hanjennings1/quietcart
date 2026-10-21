@@ -1,25 +1,47 @@
-// TEMPORARY: proves the React → Vite proxy → Flask connection works.
-// Replaced Thursday with the real app (routing, login, pages).
-import { useEffect, useState } from 'react'
+// The app's map: which page shows at which address.
+import { Route, Routes } from 'react-router-dom'
+import { Box, Button, Typography } from '@mui/material'
+
+import { useAuth } from './context/AuthContext.jsx'
+import LoginPage from './pages/LoginPage.jsx'
+import SignupPage from './pages/SignupPage.jsx'
+import ProtectedRoute from './components/ProtectedRoute.jsx'
+import GuestRoute from './components/GuestRoute.jsx'
+import AppLayout from './components/AppLayout.jsx'
+import NotFoundPage from './pages/NotFoundPage.jsx'
+
+
+// TEMPORARY: stands in for the dashboard until it's built
+function DashboardPlaceholder() {
+  const { user } = useAuth()
+  return (
+    <Box>
+      <Typography variant="h3" color="primary">Dashboard</Typography>
+      <Typography sx={{ my: 2 }}>Logged in as {user.username}</Typography>
+    </Box>
+  )
+}
 
 function App() {
-  // What Flask answered, shown on the page
-  const [result, setResult] = useState('Checking the connection...')
-
-  // useEffect with an empty [] runs once, when the page first loads
-  useEffect(() => {
-    // A relative URL: "/api/..." goes to Vite, which forwards it to Flask
-    fetch('/api/check_session')
-      .then((response) => response.json())
-      .then((data) => setResult(JSON.stringify(data)))
-      .catch(() => setResult('Could not reach the server. Is Flask running?'))
-  }, [])
-
   return (
-    <main>
-      <h1>quietcart</h1>
-      <p>Flask says: {result}</p>
-    </main>
+    // Routes shows the FIRST Route whose path matches the address bar
+    <Routes>
+      {/* Guest pages: only for logged-out users */}
+      <Route element={<GuestRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+      </Route>
+
+      {/* Private pages: ProtectedRoute checks login first, then AppLayout
+          draws the sidebar, then the matching page appears inside it */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<DashboardPlaceholder />} />
+          {/* "*" matches any address no other route matched */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Route>
+    </Routes>
   )
 }
 
