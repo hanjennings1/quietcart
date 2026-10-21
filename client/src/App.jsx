@@ -8,6 +8,7 @@ import SignupPage from './pages/SignupPage.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import GuestRoute from './components/GuestRoute.jsx'
 import AppLayout from './components/AppLayout.jsx'
+import NotFoundPage from './pages/NotFoundPage.jsx'
 
 
 // TEMPORARY: stands in for the dashboard until it's built
@@ -36,6 +37,8 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<DashboardPlaceholder />} />
+          {/* "*" matches any address no other route matched */}
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>
     </Routes>
