@@ -1,28 +1,33 @@
-// TEMPORARY: tests the auth context. Replaced next with routing and pages.
-import { Box, Button, Stack, Typography } from '@mui/material'
+// The app's map: which page shows at which address.
+import { Route, Routes } from 'react-router-dom'
+import { Box, Button, Typography } from '@mui/material'
 
 import { useAuth } from './context/AuthContext.jsx'
+import LoginPage from './pages/LoginPage.jsx'
+import SignupPage from './pages/SignupPage.jsx'
 
-function App() {
-  const { user, checkingSession, login, logout } = useAuth()
-
-  if (checkingSession) {
-    return <Typography sx={{ p: 4 }}>Checking session...</Typography>
-  }
-
+// TEMPORARY: stands in for the dashboard until it's built
+function DashboardPlaceholder() {
+  const { user, logout } = useAuth()
   return (
     <Box sx={{ p: 4 }}>
-      <Typography variant="h3" color="primary">quietcart</Typography>
+      <Typography variant="h3" color="primary">Dashboard</Typography>
       <Typography sx={{ my: 2 }}>
         {user ? `Logged in as ${user.username}` : 'Not logged in'}
       </Typography>
-      <Stack direction="row" spacing={2}>
-        <Button variant="contained" onClick={() => login('hannah', 'giftsecret1')}>
-          Log in as hannah
-        </Button>
-        <Button variant="outlined" onClick={logout}>Log out</Button>
-      </Stack>
+      <Button variant="outlined" onClick={logout}>Log out</Button>
     </Box>
+  )
+}
+
+function App() {
+  return (
+    // Routes shows the FIRST Route whose path matches the address bar
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/" element={<DashboardPlaceholder />} />
+    </Routes>
   )
 }
 
