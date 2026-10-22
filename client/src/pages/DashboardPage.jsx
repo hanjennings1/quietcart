@@ -6,6 +6,7 @@ import { Alert, Box, CircularProgress, Paper, Typography } from '@mui/material'
 import { apiFetch } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { formatMoney } from '../utils/format.js'
+import RecipientSummary from '../components/RecipientSummary.jsx'
 
 function DashboardPage() {
     const { user } = useAuth()
@@ -19,7 +20,7 @@ function DashboardPage() {
     useEffect(() => {
         apiFetch('/dashboard')
             .then((data) => setDashboard(data))
-            .catch((er) => setError(error.message))
+            .catch((err) => setError(error.message))
     }, [])
 
     // 1. AN ERROR OCCURS - show Flask/apiFetch message:
@@ -37,7 +38,7 @@ function DashboardPage() {
     }
 
     // 3. LOADED - show the page:
-    const { totals } = dashboard
+    const { totals, recipients } = dashboard
 
     // FOUR SUMMARY CARDS - as data, so the JSX below can loop over them
     const stats = [
@@ -70,6 +71,27 @@ function DashboardPage() {
                     </Paper>
                 ))}
             </Box>
+            {/* YOUR RECIPIENTS' LISTS: 1 column on phones, 2 on tablets, 3 on wide screens */}
+            <Typography variant="h5" sx={{ mb: 2 }}>Your recipients' lists</Typography>
+
+            {recipients.length === 0 ? (
+                <Typography color="text.secondary">
+                    No recipients yet. Add the people you shop for from the Recipients page.
+                </Typography>
+            ) : (
+                <Box
+                    sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+                        gap: 2,
+                        mb: 4,
+                    }}
+                >
+                    {recipients.map((recipient) => (
+                        <RecipientSummary key={recipient.id} recipient={recipient} />
+                    ))}
+                </Box>
+            )}
         </Box>
     )
 }
