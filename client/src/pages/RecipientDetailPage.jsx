@@ -12,6 +12,7 @@ import { apiFetch } from '../api.js'
 import BudgetBar from '../components/BudgetBar.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import { recipientColor } from '../theme.js'
+import GiftItem from '../components/GiftItem.jsx'
 
 function RecipientDetailPage() {
     const { id } = useParams()
@@ -24,6 +25,9 @@ function RecipientDetailPage() {
     // the delete confirmation pop-up:
     const [confirmOpen, setConfirmOpen] = useState(false)
     const [deleting, setDeleting] = useState(false)
+
+    // The id of the gift being saved (or null), so only that row's checkbox is disabled while it saves
+    const [savingGiftId, setSavingGiftId] = useState(null)
 
     // Loads (or reloads) the recipient
     // wrapped in useCallback so React reuses the same function between renders
@@ -49,6 +53,30 @@ function RecipientDetailPage() {
             setConfirmOpen(false)
         }
     }
+
+    // Check a gift off (or un-check it), then reload the recipient
+    // so that the spent total and checklist order come fresh from Flask
+    async function handleToggle(gift) {
+        setError('')
+        setSavingGiftId(gift.id)
+        try {
+            await apiFetch(`/gifts/${gift.id}`, {
+                method: 'PATCH',
+                body: { purchased: !gift.purchased },
+            })
+            await loadRecipient()
+        } catch (err) {
+            setError(err.message)
+        } finally {
+            // runs whether or not the saved worked
+            setSavingGiftId(null)
+        }
+    }
+
+
+
+
+
 
     // 1. NOT FOUND (or another error) and has nothing to show
     if (error && recipient === null) {
@@ -126,12 +154,23 @@ function RecipientDetailPage() {
 
             {/* ─── GIFT IDEAS ─── */}
             <Typography variant="h5" sx={{ mb: 2 }}>Gift ideas</Typography>
-            {/* TEMPORARY: replaced by the real checklist in the next layer */}
-            {recipient.gifts.map((gift) => (
-                <Typography key={gift.id}>
-                    {gift.purchased ? '✓ ' : '• '}{gift.name}
-                </Typography>
-            ))}
+            {recipient.gifts.length === 0 ? (
+                <Typography color="text.secondary">No gift ideas yet.</Typography>
+            ) : (
+                // Flask already sorts them: unpurchased first (newest on top),
+                // then purchased
+                <Stack spacing={1}>
+                    {recipient.gifts.map((gift) => (
+                        <GiftItem
+                            key={gift.id}
+                            gift={gift}
+                            color={color}
+                            onToggle={handleToggle}
+                            disabled={savingGiftId === gift.id}
+                        />
+                    ))}
+                </Stack>
+            )}
 
             {/* ─── DELETE CONFIRMATION ─── */}
             <ConfirmDialog
