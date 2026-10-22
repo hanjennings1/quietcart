@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import RecipientsPage from './pages/RecipientsPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
+import RecipientDetailPage from './pages/RecipientDetailPage.jsx'
 import RecipientFormPage from './pages/RecipientFormPage.jsx'
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/recipients" element={<RecipientsPage />} />
           <Route path="/recipients/new" element={<RecipientFormPage />} />
+          <Route path="/recipients/:id" element={<RecipientDetailPage />} />
           <Route path="/recipients/:id/edit" element={<RecipientFormPage />} />
           {/* "*" matches any address no other route matched */}
           <Route path="*" element={<NotFoundPage />} />
