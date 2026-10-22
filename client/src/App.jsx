@@ -1,26 +1,14 @@
 // The app's map: which page shows at which address.
 import { Route, Routes } from 'react-router-dom'
-import { Box, Button, Typography } from '@mui/material'
 
-import { useAuth } from './context/AuthContext.jsx'
-import LoginPage from './pages/LoginPage.jsx'
-import SignupPage from './pages/SignupPage.jsx'
-import ProtectedRoute from './components/ProtectedRoute.jsx'
-import GuestRoute from './components/GuestRoute.jsx'
 import AppLayout from './components/AppLayout.jsx'
+import GuestRoute from './components/GuestRoute.jsx'
+import ProtectedRoute from './components/ProtectedRoute.jsx'
+import DashboardPage from './pages/DashboardPage.jsx'
+import LoginPage from './pages/LoginPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
+import SignupPage from './pages/SignupPage.jsx'
 
-
-// TEMPORARY: stands in for the dashboard until it's built
-function DashboardPlaceholder() {
-  const { user } = useAuth()
-  return (
-    <Box>
-      <Typography variant="h3" color="primary">Dashboard</Typography>
-      <Typography sx={{ my: 2 }}>Logged in as {user.username}</Typography>
-    </Box>
-  )
-}
 
 function App() {
   return (
@@ -36,7 +24,7 @@ function App() {
           draws the sidebar, then the matching page appears inside it */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<DashboardPlaceholder />} />
+          <Route path="/" element={<DashboardPage />} />
           {/* "*" matches any address no other route matched */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
