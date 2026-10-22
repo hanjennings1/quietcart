@@ -123,11 +123,16 @@ function GiftForm({ initialGift = null, submitLabel = 'Add', onSubmit, onCancel 
                     </Stack>
                 </Collapse>
 
-                <Stack direction="row" spacing={1}>
+                {/* Details toggle on the left; Cancel (when editing) on the right */}
+                <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
                     <Button size="small" onClick={() => setShowDetails(!showDetails)}>
                         {showDetails ? 'Fewer details' : 'More details'}
                     </Button>
-                    {onCancel && <Button size="small" onClick={onCancel}>Cancel</Button>}
+                    {onCancel && (
+                        <Button size="small" variant="outlined" onClick={onCancel}>
+                            Cancel
+                        </Button>
+                    )}
                 </Stack>
             </Stack>
         </Box>

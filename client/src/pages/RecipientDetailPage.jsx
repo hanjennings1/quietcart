@@ -31,6 +31,13 @@ function RecipientDetailPage() {
     // The id of the gift being saved (or null), so only that row's checkbox is disabled while it saves
     const [savingGiftId, setSavingGiftId] = useState(null)
 
+    // The id of the gift being edited (row turns into a form), or null
+    const [editingGiftId, setEditingGiftId] = useState(null)
+
+    // The gift waiting for delete confirmation (opens the pop-up), or null
+    const [giftToDelete, setGiftToDelete] = useState(null)
+    const [deletingGift, setDeletingGift] = useState(false)
+
     // Loads (or reloads) the recipient
     // wrapped in useCallback so React reuses the same function between renders
     const loadRecipient = useCallback(() => {
@@ -70,7 +77,7 @@ function RecipientDetailPage() {
         } catch (err) {
             setError(err.message)
         } finally {
-            // runs whether or not the saved worked
+            // runs whether or not the save worked
             setSavingGiftId(null)
         }
     }
@@ -83,6 +90,29 @@ function RecipientDetailPage() {
             body: { ...values, recipient_id: recipient.id },
         })
         await loadRecipient()
+    }
+
+    // Save changes to the gift being edited
+    // If Flask rejects them, an error is thrown back to GiftForm which shows it
+    async function handleSaveGift(values) {
+        await apiFetch(`/gifts/${editingGiftId}`, { method: 'PATCH', body: values })
+        setEditingGiftId(null)   // close the form, back to a normal row
+        await loadRecipient()
+    }
+
+    // Delete the gift after the user confirms using the pop-up
+    async function handleDeleteGift() {
+        setDeletingGift(true)
+        try {
+            await apiFetch(`/gifts/${giftToDelete.id}`, { method: 'DELETE' })
+            setGiftToDelete(null)       // close the pop-up
+            await loadRecipient()
+        } catch (err) {
+            setError(err.message)
+            setGiftToDelete(null)
+        } finally {
+            setDeletingGift(false)
+        }
     }
 
 
@@ -173,19 +203,33 @@ function RecipientDetailPage() {
                 // Flask already sorts them: unpurchased first (newest on top),
                 // then purchased
                 <Stack spacing={1}>
-                    {recipient.gifts.map((gift) => (
-                        <GiftItem
-                            key={gift.id}
-                            gift={gift}
-                            color={color}
-                            onToggle={handleToggle}
-                            disabled={savingGiftId === gift.id}
-                        />
-                    ))}
+                    {recipient.gifts.map((gift) =>
+                        gift.id === editingGiftId ? (
+                            // EDITING: this row becomes the form, filled in with the gift
+                            <Paper key={gift.id} sx={{ p: 2 }}>
+                                <GiftForm
+                                    initialGift={gift}
+                                    submitLabel="Save"
+                                    onSubmit={handleSaveGift}
+                                    onCancel={() => setEditingGiftId(null)}
+                                />
+                            </Paper>
+                        ) : (
+                            <GiftItem
+                                key={gift.id}
+                                gift={gift}
+                                color={color}
+                                onToggle={handleToggle}
+                                onEdit={(chosen) => setEditingGiftId(chosen.id)}
+                                onDelete={(chosen) => setGiftToDelete(chosen)}
+                                disabled={savingGiftId === gift.id}
+                            />
+                        ),
+                    )}
                 </Stack>
             )}
 
-            {/* ─── DELETE CONFIRMATION ─── */}
+            {/* ─── DELETE RECIPIENT CONFIRMATION ─── */}
             <ConfirmDialog
                 open={confirmOpen}
                 title={`Delete ${recipient.name}?`}
@@ -193,6 +237,16 @@ function RecipientDetailPage() {
                 busy={deleting}
                 onConfirm={handleDelete}
                 onCancel={() => setConfirmOpen(false)}
+            />
+
+            {/* ─── DELETE GIFT CONFIRMATION ─── */}
+            <ConfirmDialog
+                open={giftToDelete !== null}
+                title={`Delete ${giftToDelete?.name}?`}
+                message="This gift idea will be removed from the list."
+                busy={deletingGift}
+                onConfirm={handleDeleteGift}
+                onCancel={() => setGiftToDelete(null)}
             />
         </Box>
     )

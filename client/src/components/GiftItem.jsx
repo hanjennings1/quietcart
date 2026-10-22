@@ -1,19 +1,36 @@
 // One row of a recipient's gift checklist:
-// a checkbox, gift's name (w/ optional link), price, and notes
+// a checkbox, gift's name (w/ optional link), price, notes, and a ⋮ menu (Edit, Delete)
 // Purchased gifts: faded and crossed out
 
-import { Box, Checkbox, Link, Typography } from '@mui/material'
+import { useState } from 'react'
+import {
+    Box, Checkbox, IconButton, Link, ListItemIcon, Menu, MenuItem, Typography,
+} from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import MoreVertIcon from '@mui/icons-material/MoreVert'
 
 import { formatMoney } from '../utils/format.js'
 
-// gift:        one gift from the recipient's "gifts" list
-// color:       the recipient's neon color, for the row's tint
-// onToggle:    runs when the checkbox is clicked (the page saves the change)
-// disabled:    true while a save is in progress, to prevent double-clicks
+// gift:     one gift from the recipient's "gifts" list
+// color:    the recipient's neon color, for the row's tint
+// onToggle: runs when the checkbox is clicked (the page saves the change)
+// onEdit:   runs when Edit is chosen from the ⋮ menu
+// onDelete: runs when Delete is chosen from the ⋮ menu
+// disabled: true while a save is in progress, to prevent double-clicks
 
-function GiftItem({ gift, color, onToggle, disabled = false }) {
+function GiftItem({ gift, color, onToggle, onEdit, onDelete, disabled = false }) {
     const purchased = gift.purchased
+
+    // The ⋮ button that the menu opens next to; null means menu is closed
+    const [menuAnchor, setMenuAnchor] = useState(null)
+
+    // Close the menu, then run the chosen action (onEdit or onDelete)
+    function choose(action) {
+        setMenuAnchor(null)
+        action(gift)
+    }
 
     return (
         <Box
@@ -21,7 +38,6 @@ function GiftItem({ gift, color, onToggle, disabled = false }) {
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: 1,
-                pr: 2,
                 py: 0.5,
                 borderRadius: 2,
                 // Ideas still to buy stand out; purchased ones fade back
@@ -61,6 +77,28 @@ function GiftItem({ gift, color, onToggle, disabled = false }) {
 
             {/* PRICE (on the right) */}
             <Typography sx={{ pt: 1, whiteSpace: 'nowrap' }}>{formatMoney(gift.price)}</Typography>
+
+            {/* ⋮ MENU BUTTON: an icon-only button needs an aria-label to be announced */}
+            <IconButton
+                aria-label={`More options for ${gift.name}`}
+                onClick={(event) => setMenuAnchor(event.currentTarget)}
+                disabled={disabled}
+                sx={{ alignSelf: 'center' }}
+            >
+                <MoreVertIcon />
+            </IconButton>
+
+            {/* THE MENU: shows when menuAnchor is set, positioned next to the ⋮ button */}
+            <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={() => setMenuAnchor(null)}>
+                <MenuItem onClick={() => choose(onEdit)}>
+                    <ListItemIcon><EditOutlinedIcon fontSize="small" /></ListItemIcon>
+                    Edit
+                </MenuItem>
+                <MenuItem onClick={() => choose(onDelete)} sx={{ color: 'error.main' }}>
+                    <ListItemIcon><DeleteOutlinedIcon fontSize="small" color="error" /></ListItemIcon>
+                    Delete
+                </MenuItem>
+            </Menu>
         </Box>
     )
 }
