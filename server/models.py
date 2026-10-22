@@ -97,6 +97,7 @@ class Recipient(db.Model):
     # optional - not every recipient needs a budget
     budget = db.Column(db.Numeric(10, 2))      # up to $99,999,999.99
 
+    # CREATED AT:
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     # RELATIONSHIPS:
@@ -127,7 +128,7 @@ class Recipient(db.Model):
 
     @validates("budget")
     def validate_budget(self, key, budget):
-        """Accepts numbers/numeric strong from JSON; blank = no budget"""
+        """Accepts numbers/numeric string from JSON; blank = no budget"""
         if budget is None or budget == "":
             return None
         try:
