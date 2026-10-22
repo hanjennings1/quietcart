@@ -2,7 +2,7 @@
 // one recipient's details, budget, and gift ideas; also where they're edited or deleted.
 
 import { useCallback, useEffect, useState } from 'react'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { Alert, Box, Button, CircularProgress, Link, Paper, Stack, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
@@ -19,6 +19,9 @@ import { recipientColor } from '../theme.js'
 function RecipientDetailPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+
+    // Goes up after every quick-add; reloading on change shows the new idea
+    const { dataVersion } = useOutletContext()
 
     // The recipient (from Flask), including their gifts list; null = not loaded yet
     const [recipient, setRecipient] = useState(null)
@@ -49,7 +52,7 @@ function RecipientDetailPage() {
     // Load when the page opens (& again if the id in address is changed)
     useEffect(() => {
         loadRecipient()
-    }, [loadRecipient])
+    }, [loadRecipient, dataVersion])
 
     async function handleDelete() {
         setDeleting(true)

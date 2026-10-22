@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Alert, Box, CircularProgress, Paper, Typography } from '@mui/material'
+import { useOutletContext } from 'react-router-dom'
 
 import { apiFetch } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -11,6 +12,9 @@ import RecentIdeas from '../components/RecentIdeas.jsx'
 
 function DashboardPage() {
     const { user } = useAuth()
+
+    // Goes up after every quick-add (shared by AppLayout); keeps this page current without a manual refresh
+    const { dataVersion } = useOutletContext()
 
     // The dashboard data from Flask : { recipients, totals, recent_ideas }
     // null = "not loaded yet"
@@ -22,7 +26,7 @@ function DashboardPage() {
         apiFetch('/dashboard')
             .then((data) => setDashboard(data))
             .catch((err) => setError(error.message))
-    }, [])
+    }, [dataVersion])
 
     // 1. AN ERROR OCCURS - show Flask/apiFetch message:
     if (error) {

@@ -1,25 +1,28 @@
 // The recipients' page: every recipient has a card, plus a button to add a recipient
 
 import { useEffect, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useOutletContext } from 'react-router-dom'
 import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 
 import { apiFetch } from '../api.js'
 import RecipientCard from '../components/RecipientCard.jsx'
 
-
 function RecipientsPage() {
+
+    // Goes up after every quick-add; reloading on change keeps idea counts current
+    const { dataVersion } = useOutletContext()
+
     // The list from Flask: null = 'not loaded yet'
     const [recipients, setRecipients] = useState(null)
     const [error, setError] = useState('')
 
-    // Load the recipient once (when page loads)
+    // Load the recipients when the page opens and again after a quick-add
     useEffect(() => {
         apiFetch('/recipients')
             .then((data) => setRecipients(data))
             .catch((err) => setError(err.message))
-    }, [])
+    }, [dataVersion])
 
     // 1. SOMETHING WENT WRONG:
     if (error) {
