@@ -11,8 +11,10 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { apiFetch } from '../api.js'
 import BudgetBar from '../components/BudgetBar.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
-import { recipientColor } from '../theme.js'
 import GiftItem from '../components/GiftItem.jsx'
+import GiftForm from '../components/GiftForm.jsx'
+import { recipientColor } from '../theme.js'
+
 
 function RecipientDetailPage() {
     const { id } = useParams()
@@ -73,9 +75,15 @@ function RecipientDetailPage() {
         }
     }
 
-
-
-
+    // Save a new gift idea for this recipient, then reload the page's data
+    // If Flask rejects it, an error is thrown back to GiftForm which shows it
+    async function handleAddGift(values) {
+        await apiFetch('/gifts', {
+            method: 'POST',
+            body: { ...values, recipient_id: recipient.id },
+        })
+        await loadRecipient()
+    }
 
 
     // 1. NOT FOUND (or another error) and has nothing to show
@@ -154,6 +162,11 @@ function RecipientDetailPage() {
 
             {/* ─── GIFT IDEAS ─── */}
             <Typography variant="h5" sx={{ mb: 2 }}>Gift ideas</Typography>
+
+            {/* ADD AN IDEA */}
+            <Paper sx={{ p: 2, mb: 2 }}>
+                <GiftForm onSubmit={handleAddGift} />
+            </Paper>
             {recipient.gifts.length === 0 ? (
                 <Typography color="text.secondary">No gift ideas yet.</Typography>
             ) : (
