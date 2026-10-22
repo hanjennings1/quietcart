@@ -7,6 +7,7 @@ import { apiFetch } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { formatMoney } from '../utils/format.js'
 import RecipientSummary from '../components/RecipientSummary.jsx'
+import RecentIdeas from '../components/RecentIdeas.jsx'
 
 function DashboardPage() {
     const { user } = useAuth()
@@ -38,7 +39,7 @@ function DashboardPage() {
     }
 
     // 3. LOADED - show the page:
-    const { totals, recipients } = dashboard
+    const { totals, recipients, recent_ideas } = dashboard
 
     // FOUR SUMMARY CARDS - as data, so the JSX below can loop over them
     const stats = [
@@ -92,6 +93,8 @@ function DashboardPage() {
                     ))}
                 </Box>
             )}
+            {/* RECENTLY SAVED: list of most recent ideas saved*/}
+            <RecentIdeas ideas={recent_ideas} />
         </Box>
     )
 }
