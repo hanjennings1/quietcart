@@ -2,24 +2,33 @@
 // their color, name, and (unpurchased) gift ideas
 // Built for quick-checks while shopping
 
-import { Link as RouterLink } from 'react-router-dom'
-import { Box, Link, Paper, Stack, Typography } from '@mui/material'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Box, Chip, Link, Paper, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 
 import BudgetBar from './BudgetBar.jsx'
 import { recipientColor } from '../theme.js'
 import { formatMoney } from '../utils/format.js'
 
+
+// How many chips fit on a dashboard card before the rest collapse into "+N"
+const MAX_CHIPS = 3
+
 // recipient: one item from the dashboard's "recipients" list:
-// { id, name, relationship, budget spent, ideas: [...] }
+// { id, name, relationship, budget, spent, interests: [...], ideas: [...] }
 function RecipientSummary({ recipient }) {
     // The same color everywhere for this recipient, based on their id
     const color = recipientColor(recipient.id)
+    const navigate = useNavigate()
+
+    // First few chips for a quick "what do they like?" glance while shopping
+    const shownChips = recipient.interests.slice(0, MAX_CHIPS)
+    const hiddenCount = recipient.interests.length - shownChips.length
 
     return (
         // overflow: hidden, keeps the color stripe inside rounded corners
         <Paper sx={{ overflow: 'hidden', height: '100%' }}>
-            {/* COLOR STIPE */}
+            {/* COLOR STRIPE */}
             <Box sx={{ height: 6, bgcolor: color }} />
 
             <Box sx={{ p: 2 }}>
@@ -37,6 +46,30 @@ function RecipientSummary({ recipient }) {
                     <Typography variant="body2" color="text.secondary">
                         {recipient.relationship}
                     </Typography>
+                )}
+
+                {/* INTERESTS: a quick reminder of what they like */}
+                {shownChips.length > 0 && (
+                    <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+                        {shownChips.map((interest) => (
+                            <Chip
+                                key={interest.id}
+                                label={interest.label}
+                                size="small"
+                                onClick={() => navigate(`/interests/${interest.id}`)}
+                                sx={{ bgcolor: alpha(color, 0.25) }}
+                            />
+                        ))}
+                        {/* the rest are on the recipient's page */}
+                        {hiddenCount > 0 && (
+                            <Chip
+                                label={`+${hiddenCount}`}
+                                size="small"
+                                variant="outlined"
+                                onClick={() => navigate(`/recipients/${recipient.id}`)}
+                            />
+                        )}
+                    </Stack>
                 )}
 
                 {/* BUDGET */}
