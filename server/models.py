@@ -199,6 +199,11 @@ class Recipient(db.Model):
             "budget": float(self.budget) if self.budget is not None else None,
             "spent": float(self.spent),
             "idea_count": self.idea_count,
+            # Chips sorted alphabetically so they always appear in the same order
+            "interests": [
+                interest.to_dict()
+                for interest in sorted(self.interests, key=lambda i: i.label)
+            ],
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

@@ -6,7 +6,7 @@ Then the API is available at http://localhost:5555/api/...
 
 config.py creates the app and database; auth.py holds signup, login,
 logout, and the @login_required decorator. This file holds the
-recipient, gift, and dashboard routes.
+recipient, gift, interest (chip), and dashboard routes.
 
 OWNERSHIP RULE: every query here is filtered by the logged-in user, so
 another user's records can't be found at all. Requests for them get
@@ -20,7 +20,7 @@ from flask import g, request
 
 from config import app, db
 from auth import auth_bp, login_required
-from models import Gift, Recipient
+from models import Gift, Interest, Recipient
 
 # Plug in the auth routes: /api/signup, /api/login, /api/logout, & /api/check_session.
 app.register_blueprint(auth_bp)
@@ -59,6 +59,14 @@ def get_owned_gift(gift_id):
         .filter(Gift.id == gift_id, Recipient.user_id == g.current_user.id)
         .first()
     )
+
+
+def get_owned_interest(interest_id):
+    """Return the logged-in user's interest with this id, or None.
+    Another user's chip returns None too, so routes respond 404 (not 403)."""
+    return Interest.query.filter_by(
+        id=interest_id, user_id=g.current_user.id
+    ).first()
 
 
 # ─── RECIPIENT ROUTES ─────────────────────────────────────────────────
@@ -251,8 +259,40 @@ def delete_gift(gift_id):
     return "", 204      # No Content
 
 
-# ─── DASHBOARD ROUTE ──────────────────────────────────────────────────
+# ─── INTERESTS (chips) ──────────────────────────────────────────────────
+# LIST OF ALL INTEREST CHIPS
+@app.get("/api/interests")
+@login_required
+def list_interests():
+    """All of the user's chips, alphabetically, each with # recipients that have it"""
+    interests = (
+        Interest.query.filter_by(user_id=g.current_user.id)
+        .order_by(Interest.label)
+        .all()
+    )
+    return [
+        {**interest.to_dict(), "recipient_count": len(interest.recipients)}
+        for interest in interests
+    ], 200      # OK
 
+
+# ONE INTEREST AND LISTING OF WHO ALL SHARES IT
+@app.get("/api/interests/<int:interest_id>")
+@login_required
+def get_interest(interest_id):
+    """One chip plus every recipient who shares it"""
+    interest = get_owned_interest(interest_id)
+    if interest is None:
+        return {"error": "Interest not found."}, 404        # Not Found
+
+    recipients = sorted(interest.recipients, key=lambda r: r.name)
+    return {
+        **interest.to_dict(),
+        "recipients": [recipient.to_dict() for recipient in recipients],
+    }, 200      #OK
+
+
+# ─── DASHBOARD ROUTE ──────────────────────────────────────────────────
 # How many recent ideas the homepage shows
 RECENT_IDEAS_LIMIT = 5
 
