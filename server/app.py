@@ -6,7 +6,7 @@ Then the API is available at http://localhost:5555/api/...
 
 config.py creates the app and database; auth.py holds signup, login,
 logout, and the @login_required decorator. This file holds the
-recipient, gift, and dashboard routes.
+recipient, gift, interest (chip), and dashboard routes.
 
 OWNERSHIP RULE: every query here is filtered by the logged-in user, so
 another user's records can't be found at all. Requests for them get
@@ -20,7 +20,7 @@ from flask import g, request
 
 from config import app, db
 from auth import auth_bp, login_required
-from models import Gift, Recipient
+from models import Gift, Interest, Recipient
 
 # Plug in the auth routes: /api/signup, /api/login, /api/logout, & /api/check_session.
 app.register_blueprint(auth_bp)
@@ -59,6 +59,14 @@ def get_owned_gift(gift_id):
         .filter(Gift.id == gift_id, Recipient.user_id == g.current_user.id)
         .first()
     )
+
+
+def get_owned_interest(interest_id):
+    """Return the logged-in user's interest with this id, or None.
+    Another user's chip returns None too, so routes respond 404 (not 403)."""
+    return Interest.query.filter_by(
+        id=interest_id, user_id=g.current_user.id
+    ).first()
 
 
 # ─── RECIPIENT ROUTES ─────────────────────────────────────────────────
@@ -251,8 +259,99 @@ def delete_gift(gift_id):
     return "", 204      # No Content
 
 
-# ─── DASHBOARD ROUTE ──────────────────────────────────────────────────
+# ─── INTERESTS (chips) ──────────────────────────────────────────────────
+# LIST OF ALL INTEREST CHIPS
+@app.get("/api/interests")
+@login_required
+def list_interests():
+    """All of the user's chips, alphabetically, each with # recipients that have it"""
+    interests = (
+        Interest.query.filter_by(user_id=g.current_user.id)
+        .order_by(Interest.label)
+        .all()
+    )
+    return [
+        {**interest.to_dict(), "recipient_count": len(interest.recipients)}
+        for interest in interests
+    ], 200      # OK
 
+
+# ONE INTEREST AND LISTING OF WHO ALL SHARES IT
+@app.get("/api/interests/<int:interest_id>")
+@login_required
+def get_interest(interest_id):
+    """One chip plus every recipient who shares it"""
+    interest = get_owned_interest(interest_id)
+    if interest is None:
+        return {"error": "Interest not found."}, 404        # Not Found
+
+    recipients = sorted(interest.recipients, key=lambda r: r.name)
+    return {
+        **interest.to_dict(),
+        "recipients": [recipient.to_dict() for recipient in recipients],
+    }, 200      #OK
+
+
+# ADD A CHIP TO A RECIPIENT
+@app.post("/api/recipients/<int:recipient_id>/interests")
+@login_required
+def add_interest(recipient_id):
+    """ Add a chip to a recipient by its label;
+    re-uses existing chip with that label if it exists, or creates a new one"""
+    recipient = get_owned_recipient(recipient_id)
+    if recipient is None:
+        return{"error": "Recipient not found."}, 404     # Not Found
+
+    data = get_json_body()
+    if data is None:
+        return {"error": "Request body must be JSON."}, 400     # Bad Request
+
+    try:
+        label = Interest.clean_label(data.get("label"))
+    except ValueError as err:
+        return {"error": str(err)}, 400     # Bad Request
+
+    # Find-or-Create: search only this user's chips
+    interest = Interest.query.filter_by(
+            user_id=g.current_user.id, label=label
+    ).first()
+    if interest is None:
+        interest = Interest(label=label, user=g.current_user)
+        db.session.add(interest)
+
+    # Already on this recipient: nothing to change/no error
+    if interest in recipient.interests:
+        return interest.to_dict(), 200      #OK
+
+    recipient.interests.append(interest)        # creates the link row
+    db.session.commit()
+    return interest.to_dict(), 201      # Created
+
+
+# REMOVE A CHIP FROM A RECIPIENT
+@app.delete("/api/recipients/<int:recipient_id>/interests/<int:interest_id>")
+@login_required
+def remove_interest(recipient_id, interest_id):
+    """Remove a chip from a recipient; if no other recipients share it, it is deleted entirely"""
+    recipient = get_owned_recipient(recipient_id)
+    if recipient is None:
+        return {"error": "Recipient not found."}, 404       # Not Found
+
+    interest = get_owned_interest(interest_id)
+    if interest is None or interest not in recipient.interests:
+        return {"error": "Interest not found."}, 404       # Not Found
+
+    recipient.interests.remove(interest)        # deletes link row
+
+    # back_populats keeps interest.recipients in sync, so this sees the removal:
+    if not interest.recipients:
+        db.session.delete(interest)
+
+    db.session.commit()
+    return "", 204      # No Content
+
+
+# ─── DASHBOARD ROUTE ──────────────────────────────────────────────────
 # How many recent ideas the homepage shows
 RECENT_IDEAS_LIMIT = 5
 

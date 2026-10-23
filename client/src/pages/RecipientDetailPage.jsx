@@ -13,6 +13,7 @@ import BudgetBar from '../components/BudgetBar.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import GiftItem from '../components/GiftItem.jsx'
 import GiftForm from '../components/GiftForm.jsx'
+import InterestChips from '../components/InterestChips.jsx'
 import { recipientColor } from '../theme.js'
 
 
@@ -190,6 +191,20 @@ function RecipientDetailPage() {
                     <Box sx={{ mt: 3 }}>
                         <BudgetBar spent={recipient.spent} budget={recipient.budget} color={color} />
                     </Box>
+
+                    {/* INTERESTS: chips for gift inspiration */}
+                    <Box sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                            Interests
+                        </Typography>
+                        <InterestChips
+                            recipientId={recipient.id}
+                            interests={recipient.interests}
+                            color={color}
+                            onChange={loadRecipient}
+                        />
+                    </Box>
+
                 </Box>
             </Paper>
 

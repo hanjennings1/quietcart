@@ -11,14 +11,18 @@ Two users are created on purpose, so ownership rules can be tested
 """
 
 from config import app, db
-from models import User, Recipient, Gift
+from models import User, Recipient, Gift, Interest, recipient_interests
 
 
 def clear_data():
     """Delete every row, children first, so no foreign key points
     to a row that no longer exists."""
+    # Link rows first: they point at both recipients and interests
+    db.session.execute(db.delete(recipient_interests))
     db.session.execute(db.delete(Gift))
     db.session.execute(db.delete(Recipient))
+    # Interests point at users, so they go before users
+    db.session.execute(db.delete(Interest))
     db.session.execute(db.delete(User))
     db.session.commit()
 
@@ -74,18 +78,54 @@ def seed():
 
     hannah.recipients.extend([erin, emma, cameron])
 
+    print("Creating interests...")
+    # HANNAH'S INTERESTS:
+    # Each chip is created once, then shared. "travel" goes on both
+    # Emma and Cameron, so the "who shares this interest?" filter has data.
+    board_games = Interest(label="board games")
+    basketball = Interest(label="basketball")
+    nyc = Interest(label="nyc")
+    cats = Interest(label="cats")
+    whimsical = Interest(label="whimsical")
+    crafts = Interest(label="crafts")
+    star_wars = Interest(label="star wars")
+    travel = Interest(label="travel")
+    video_games = Interest(label="video games")
+
+    # Adding to user.interests sets each chip's user (back_populates)
+    hannah.interests.extend(
+        [board_games, basketball, nyc, cats, whimsical, crafts, star_wars, travel, video_games]
+    )
+
+    # Appending to recipient.interests creates the link rows in recipient_interests
+    erin.interests.extend([basketball, nyc, board_games])
+    emma.interests.extend([cats, whimsical, crafts, travel])
+    cameron.interests.extend([star_wars, travel, video_games])
+
+
     # SAM'S RECIPIENTS:
     # A second account's data, used to test that users can't see each other's lists.
     mom = Recipient(name="Mom", relationship="mother", budget=75)
     mom.gifts.append(Gift(name="Gardening gloves", price=22))
     sam.recipients.append(mom)
 
+    # SAM'S INTERESTS:
+    # Sam also has a "cats" chip: the same label is allowed for two different users
+    # (the unique rule is per user), and the ownership tests can confirm sam never sees hannah's chips.
+    gardening = Interest(label="gardening")
+    sam_cats = Interest(label="cats")
+    sam.interests.extend([gardening, sam_cats])
+    mom.interests.extend([gardening, sam_cats])
+
     # Saving the users also saves their recipients and gifts, because of cascade="all, delete-orphan".
     db.session.add_all([hannah, sam])
     db.session.commit()
 
+
+    # FINAL PRINT:
     print(f"Done! {User.query.count()} users, "
-          f"{Recipient.query.count()} recipients, {Gift.query.count()} gifts.")
+            f"{Recipient.query.count()} recipients, {Gift.query.count()} gifts, "
+            f"{Interest.query.count()} interests.")
 
 
 # Only runs when this file is executed directly (python seed.py),
