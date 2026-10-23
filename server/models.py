@@ -329,13 +329,19 @@ class Interest(db.Model):
     recipients = db.relationship("Recipient", secondary=recipient_interests, back_populates="interests")
 
 
-    @validates("label")
-    def validate_label(self, key, label):
-        """Trims space, collapses doubles, and lowercases"""
+    @staticmethod
+    def clean_label(label):
+        """Trims spaces, collapses doubles, and lowercases, so "Cats" and " cats " count as the same chip.
+        Shared by the validator and the add-chip route (which needs the clean label to search for an existing chip)."""
         label = " ".join((label or "").split()).lower()
         if not 1 <= len(label) <= 30:
             raise ValueError("Interest must be 1-30 characters.")
         return label
+
+    @validates("label")
+    def validate_label(self, key, label):
+        """Runs every time a label is set"""
+        return Interest.clean_label(label)
 
     def to_dict(self):
         """Shape of a chip sent to the frontend: just its id and label"""

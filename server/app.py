@@ -292,6 +292,42 @@ def get_interest(interest_id):
     }, 200      #OK
 
 
+# ADD A CHIP TO A RECIPIENT
+@app.post("/api/recipients/<int:recipient_id>/interests")
+@login_required
+def add_interest(recipient_id):
+    """ Add a chip to a recipient by its label;
+    re-uses existing chip with that label if it exists, or creates a new one"""
+    recipient = get_owned_recipient(recipient_id)
+    if recipient is None:
+        return{"error": "Recipient not found."}, 404     # Not Found
+
+    data = get_json_body()
+    if data is None:
+        return {"error": "Request body must be JSON."}, 400     # Bad Request
+
+    try:
+        label = Interest.clean_label(data.get("label"))
+    except ValueError as err:
+        return {"error": str(err)}, 400     # Bad Request
+
+    # Find-or-Create: search only this user's chips
+    interest = Interest.query.filter_by(
+            user_id=g.current_user.id, label=label
+    ).first()
+    if interest is None:
+        interest = Interest(label=label, user=g.current_user)
+        db.session.add(interest)
+
+    # Already on this recipient: nothing to change/no error
+    if interest in recipient.interests:
+        return interest.to_dict(), 200      #OK
+
+    recipient.interests.append(interest)        # creates the link row
+    db.session.commit()
+    return interest.to_dict(), 201      # Created
+
+
 # ─── DASHBOARD ROUTE ──────────────────────────────────────────────────
 # How many recent ideas the homepage shows
 RECENT_IDEAS_LIMIT = 5
