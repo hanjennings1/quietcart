@@ -89,7 +89,12 @@ function GiftItem({ gift, color, onToggle, onEdit, onDelete, disabled = false })
             </IconButton>
 
             {/* THE MENU: shows when menuAnchor is set, positioned next to the ⋮ button */}
-            <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={() => setMenuAnchor(null)}>
+            <Menu
+                anchorEl={menuAnchor}
+                open={Boolean(menuAnchor)}
+                onClose={() => setMenuAnchor(null)}
+                disableRestoreFocus   // don't send focus back to ⋮; the pop-up or edit form takes it
+            >
                 <MenuItem onClick={() => choose(onEdit)}>
                     <ListItemIcon><EditOutlinedIcon fontSize="small" /></ListItemIcon>
                     Edit
