@@ -16,6 +16,28 @@ from sqlalchemy.orm import validates
 from config import db, bcrypt
 
 
+# JOIN TABLE: recipient_interests
+# A plain table: each row links one recipient to one interest
+# Many-to-Many Relationship: recipients can have many interests/interests shared amongst recipients
+recipient_interests = db.Table(
+    "recipient_interests",
+    # both columns together form primary key; same chip can't be added to same recipient twice
+    #  ondelete = "CASCADE", if either side is deleted, it's link rows delete too
+    db.Column(
+        "recipient_id",
+        db.Integer,
+        db.ForeignKey("recipients.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    db.Column(
+        "interest_id",
+        db.Integer,
+        db.ForeignKey("interests.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
+
 class User(db.Model):
     """An account. Every recipient and gift ultimately belongs to one user."""
     __tablename__ = "users"
@@ -40,6 +62,11 @@ class User(db.Model):
     # RELATIONSHIPS:
     # one user has many recipients, cascade when user is deleted
     recipients = db.relationship("Recipient", back_populates="user", cascade="all, delete-orphan")
+
+    # INTERESTS:
+    # one user has many interests (their own set of chips)
+    interests = db.relationship("Interest", back_populates="user", cascade="all, delete-orphan")
+
 
     @validates("username")
     def validate_username(self, key, username):
@@ -109,6 +136,14 @@ class Recipient(db.Model):
     gifts = db.relationship(
         "Gift", back_populates="recipient", cascade="all, delete-orphan"
     )
+
+    # INTERESTS:
+    # many-to-many through the join table
+    # deleting a recipient removes their link rows but keeps the interests (other recipients may share them)
+    interests = db.relationship(
+        "Interest", secondary=recipient_interests, back_populates="recipients"
+    )
+
 
     @validates("name")
     def validates_name(self, key, name):
@@ -246,6 +281,7 @@ class Gift(db.Model):
             self.purchased_at = None            # not checked off / not purchased
         return purchased
 
+
     def to_dict(self):
         """Shape of a gift sent to the frontend."""
         return {
@@ -259,3 +295,43 @@ class Gift(db.Model):
             "purchased_at": self.purchased_at.isoformat() if self.purchased_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class Interest(db.Model):
+    """An interest chip (like "cats" or "board games"),
+    owned by one user and shareable across that user's recipients"""
+    __tablename__ = "interests"
+
+    # Each user can have a label only once
+    __table_args__ = (db.UniqueConstraint("user_id", "label"),)
+
+    # INTEREST ID:
+    id = db.Column(db.Integer, primary_key=True)
+
+    # OWNERSHIP: chips belong to a user directly (not shared with any/all users)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id"), nullable=False, index=True
+    )
+
+    # LABEL:
+    label = db.Column(db.String(30), nullable=False)
+
+    # CREATED AT:
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    # RELATIONSHIPS:
+    user = db.relationship("User", back_populates="interests")
+    recipients = db.relationship("Recipient", secondary=recipient_interests, back_populates="interests")
+
+
+    @validates("label")
+    def validate_label(self, key, label):
+        """Trims space, collapses doubles, and lowercases"""
+        label = " ".join((label or "").split()).lower()
+        if not 1 <= len(label) <= 30:
+            raise ValueError("Interest must be 1-30 characters.")
+        return label
+
+    def to_dict(self):
+        """Shape of a chip sent to the frontend: just its id and label"""
+        return {"id": self.id, "label": self.label}
