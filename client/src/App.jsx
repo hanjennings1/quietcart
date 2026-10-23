@@ -2,15 +2,17 @@
 import { Route, Routes } from 'react-router-dom'
 
 import AppLayout from './components/AppLayout.jsx'
-import GuestRoute from './components/GuestRoute.jsx'
-import ProtectedRoute from './components/ProtectedRoute.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
+import GuestRoute from './components/GuestRoute.jsx'
+import InterestPage from './pages/InterestPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
+import ProtectedRoute from './components/ProtectedRoute.jsx'
 import RecipientsPage from './pages/RecipientsPage.jsx'
-import SignupPage from './pages/SignupPage.jsx'
 import RecipientDetailPage from './pages/RecipientDetailPage.jsx'
 import RecipientFormPage from './pages/RecipientFormPage.jsx'
+import SignupPage from './pages/SignupPage.jsx'
+
 
 function App() {
   return (
@@ -31,6 +33,7 @@ function App() {
           <Route path="/recipients/new" element={<RecipientFormPage />} />
           <Route path="/recipients/:id" element={<RecipientDetailPage />} />
           <Route path="/recipients/:id/edit" element={<RecipientFormPage />} />
+          <Route path="/interests/:id" element={<InterestPage />} />
           {/* "*" matches any address no other route matched */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
