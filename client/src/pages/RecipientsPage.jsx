@@ -93,7 +93,7 @@ function RecipientsPage() {
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                         Shared interests
                     </Typography>
-                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                         {sharedInterests.map((interest) => (
                             <Chip
                                 key={interest.id}

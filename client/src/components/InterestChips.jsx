@@ -57,7 +57,7 @@ export default function InterestChips({ recipientId, interests, color, onChange 
     }
     return (
         <Box>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
+            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
                 {interests.map((interest) => (
                     <Chip
                         key={interest.id}

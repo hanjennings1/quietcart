@@ -50,7 +50,7 @@ function RecipientSummary({ recipient }) {
 
                 {/* INTERESTS: a quick reminder of what they like */}
                 {shownChips.length > 0 && (
-                    <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+                    <Stack direction="row" spacing={0.5} useFlexGap sx={{ mt: 1, flexWrap: 'wrap' }}>
                         {shownChips.map((interest) => (
                             <Chip
                                 key={interest.id}
