@@ -25,7 +25,7 @@ function DashboardPage() {
     useEffect(() => {
         apiFetch('/dashboard')
             .then((data) => setDashboard(data))
-            .catch((err) => setError(error.message))
+            .catch((err) => setError(err.message))
     }, [dataVersion])
 
     // 1. AN ERROR OCCURS - show Flask/apiFetch message:
