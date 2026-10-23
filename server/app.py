@@ -328,6 +328,29 @@ def add_interest(recipient_id):
     return interest.to_dict(), 201      # Created
 
 
+# REMOVE A CHIP FROM A RECIPIENT
+@app.delete("/api/recipients/<int:recipient_id>/interests/<int:interest_id>")
+@login_required
+def remove_interest(recipient_id, interest_id):
+    """Remove a chip from a recipient; if no other recipients share it, it is deleted entirely"""
+    recipient = get_owned_recipient(recipient_id)
+    if recipient is None:
+        return {"error": "Recipient not found."}, 404       # Not Found
+
+    interest = get_owned_interest(interest_id)
+    if interest is None or interest not in recipient.interests:
+        return {"error": "Interest not found."}, 404       # Not Found
+
+    recipient.interests.remove(interest)        # deletes link row
+
+    # back_populats keeps interest.recipients in sync, so this sees the removal:
+    if not interest.recipients:
+        db.session.delete(interest)
+
+    db.session.commit()
+    return "", 204      # No Content
+
+
 # ─── DASHBOARD ROUTE ──────────────────────────────────────────────────
 # How many recent ideas the homepage shows
 RECENT_IDEAS_LIMIT = 5
