@@ -238,8 +238,9 @@ def create_gift():
     return gift.to_dict(), 201      # Created
 
 
-# Fields a user may edit.
-# recipient_id left out, so a gift can't move to another user's list
+# Fields a user may edit directly.
+# recipient_id left out, so a gift can't move to another user's list;
+# occasion_id is handled separately in update_gift (it needs an ownership check)
 GIFT_FIELDS = ("name", "url", "price", "notes", "purchased")
 
 
@@ -256,6 +257,24 @@ def update_gift(gift_id):
     data = get_json_body()
     if data is None:
         return {"error": "Request body must be JSON."}, 400     # Bad Request
+
+    # ASSIGN TO AN OCCASION (or unassign with null).
+    # Checked before other fields, so a bad occasion_id changes nothing.
+    if "occasion_id" in data:
+        occasion_id = data["occasion_id"]
+        if occasion_id is None:
+            gift.occasion = None        # unassign
+        else:
+            # bool excluded since Python treats True = 1
+            if not isinstance(occasion_id, int) or isinstance(occasion_id, bool):
+                return {"error": "occasion_id must be a number."}, 400      # Bad Request
+            occasion = get_owned_occasion(occasion_id)      # SECURITY: must be this user's
+            if occasion is None:
+                return {"error": "Occasion not found."}, 404        # Not Found
+            # A birthday belongs to one person; holidays (no recipient) take anyone's gifts:
+            if occasion.recipient_id is not None and occasion.recipient_id != gift.recipient_id:
+                return {"error": "That occasion is for a different recipient."}, 400        # Bad Request
+            gift.occasion = occasion
 
     try:
         for field in GIFT_FIELDS:
