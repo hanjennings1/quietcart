@@ -10,8 +10,10 @@ Two users are created on purpose, so ownership rules can be tested
 (e.g., log in as sam and confirm hannah's gifts return 404).
 """
 
+from datetime import date
+
 from config import app, db
-from models import User, Recipient, Gift, Interest, recipient_interests
+from models import User, Recipient, Gift, Interest, Occasion, recipient_interests
 
 
 def clear_data():
@@ -19,10 +21,15 @@ def clear_data():
     to a row that no longer exists."""
     # Link rows first: they point at both recipients and interests
     db.session.execute(db.delete(recipient_interests))
+    # Gifts point at recipients and occasions
     db.session.execute(db.delete(Gift))
+    # Occasions point at recipients and users, so they go before both
+    db.session.execute(db.delete(Occasion))
+    # Recipients point at users
     db.session.execute(db.delete(Recipient))
     # Interests point at users, so they go before users
     db.session.execute(db.delete(Interest))
+    # Users last: everything above points at them
     db.session.execute(db.delete(User))
     db.session.commit()
 
@@ -44,6 +51,12 @@ def seed():
     hannah = create_user("hannah", "giftsecret1")
     sam = create_user("sam", "giftsecret1")
 
+    # HANNAH'S HOLIDAY:
+    # No recipient: gifts for anyone can be assigned to Christmas
+    christmas = Occasion(
+        name="Christmas", date=date(2026, 12, 25), repeats_yearly=True, user=hannah
+    )
+
     print("Creating recipients and gifts...")
     # HANNAH'S RECIPIENTS:
     # Adding to user.recipients sets each recipient's user automatically
@@ -52,9 +65,13 @@ def seed():
         name="Erin", relationship="sister", budget=50,
         notes="Favorite colors: blue or rainbow. Loves the WNBA and NYC.",
     )
+    erin_birthday = Occasion(
+        name="Erin's birthday", date=date(1994, 5, 12), repeats_yearly=True,
+        user=hannah, recipient=erin,
+    )
     erin.gifts.extend([
         Gift(name="NY Liberty jersey", price="64.99",
-             url="https://www.wnba.com", notes="Size M"),
+             url="https://www.wnba.com", notes="Size M", occasion=christmas),
         Gift(name="Cooperative board game", price=30),
     ])
 
@@ -62,11 +79,15 @@ def seed():
         name="Emma", relationship="sister", budget=60,
         notes="Fairies, pink, cats, fun drinks.",
     )
+    emma_birthday = Occasion(
+        name="Emma's birthday", date=date(1996, 10, 10), repeats_yearly=True,
+        user=hannah, recipient=emma,
+    )
     emma.gifts.extend([
         # purchased=True also stamps purchased_at (see Gift's validator),
         # so the checklist and spent total have real data to show.
         Gift(name="Cat mug", price="18.50", purchased=True),
-        Gift(name="Fairy string lights", price=25),
+        Gift(name="Fairy string lights", price=25, occasion=emma_birthday),
         Gift(name="Pottery class", notes="She mentioned it in passing!"),
     ])
 
@@ -74,7 +95,16 @@ def seed():
         name="Cameron", relationship="friend",  # no budget on purpose
         notes="Star Wars, pizza, Japan, travel, outdoors.",
     )
-    cameron.gifts.append(Gift(name="Lego X-wing", price=49.99))
+    cameron_birthday = Occasion(
+        name="Cameron's birthday", date=date(1997, 4, 29), repeats_yearly=True,
+        user=hannah, recipient=cameron,
+    )
+    # One-time occasion: shows how non-repeating dates work
+    housewarming = Occasion(
+        name="Cameron's housewarming", date=date(2026, 11, 1), repeats_yearly=False,
+        user=hannah, recipient=cameron,
+    )
+    cameron.gifts.append(Gift(name="Lego X-wing", price=49.99, occasion=christmas))
 
     hannah.recipients.extend([erin, emma, cameron])
 
@@ -108,6 +138,10 @@ def seed():
     mom = Recipient(name="Mom", relationship="mother", budget=75)
     mom.gifts.append(Gift(name="Gardening gloves", price=22))
     sam.recipients.append(mom)
+    mom_birthday = Occasion(
+        name="Mom's birthday", date=date(1965, 8, 31), repeats_yearly=True,
+        user=sam, recipient=mom,
+    )
 
     # SAM'S INTERESTS:
     # Sam also has a "cats" chip: the same label is allowed for two different users
@@ -124,8 +158,8 @@ def seed():
 
     # FINAL PRINT:
     print(f"Done! {User.query.count()} users, "
-            f"{Recipient.query.count()} recipients, {Gift.query.count()} gifts, "
-            f"{Interest.query.count()} interests.")
+          f"{Recipient.query.count()} recipients, {Gift.query.count()} gifts, "
+          f"{Interest.query.count()} interests, {Occasion.query.count()} occasions.")
 
 
 # Only runs when this file is executed directly (python seed.py),
