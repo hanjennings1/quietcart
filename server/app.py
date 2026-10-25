@@ -6,7 +6,7 @@ Then the API is available at http://localhost:5555/api/...
 
 config.py creates the app and database; auth.py holds signup, login,
 logout, and the @login_required decorator. This file holds the
-recipient, gift, interest (chip), and dashboard routes.
+recipient, gift, interest (chip), occasion, and dashboard routes.
 
 OWNERSHIP RULE: every query here is filtered by the logged-in user, so
 another user's records can't be found at all. Requests for them get
@@ -20,7 +20,7 @@ from flask import g, request
 
 from config import app, db
 from auth import auth_bp, login_required
-from models import Gift, Interest, Recipient
+from models import Gift, Interest, Occasion, Recipient
 
 # Plug in the auth routes: /api/signup, /api/login, /api/logout, & /api/check_session.
 app.register_blueprint(auth_bp)
@@ -67,6 +67,30 @@ def get_owned_interest(interest_id):
     return Interest.query.filter_by(
         id=interest_id, user_id=g.current_user.id
     ).first()
+
+
+def get_owned_occasion(occasion_id):
+    """Return the user's occasions with this id (or None)"""
+    return Occasion.query.filter_by(
+        id=occasion_id, user_id=g.current_user.id
+    ).first()
+
+
+def find_recipient_for_occasion(recipient_id):
+    """Check an optional recipient_id from a request body.
+
+    Returns (recipient, error). recipient is None for holidays. error is a
+    ready-to-return response if the id is invalid or isn't this user's.
+    """
+    if recipient_id is None:
+        return None, None           # holiday, but no recipients
+    # bool excluded since Python treats True = 1
+    if not isinstance(recipient_id, int) or isinstance(recipient_id, bool):
+        return None, ({"error": "recipient_id must be a number."}, 400)     # Bad Request
+    recipient = get_owned_recipient(recipient_id)       # SECURITY: must be this user's
+    if recipient is None:
+        return None, ({"error": "Recipient not found."}, 404)       # Not Found
+    return recipient, None
 
 
 # ─── RECIPIENT ROUTES ─────────────────────────────────────────────────
@@ -343,12 +367,52 @@ def remove_interest(recipient_id, interest_id):
 
     recipient.interests.remove(interest)        # deletes link row
 
-    # back_populats keeps interest.recipients in sync, so this sees the removal:
+    # back_populates keeps interest.recipients in sync, so this sees the removal:
     if not interest.recipients:
         db.session.delete(interest)
 
     db.session.commit()
     return "", 204      # No Content
+
+
+# ─── OCCASION ROUTES ──────────────────────────────────────────────────
+# LIST OF OCCASIONS, SOONEST FIRST
+@app.get("/api/occasions")
+@login_required
+def list_occasions():
+    """ All of the user's occasions, sorted by when they happen next.
+    next_date is calculated (not a column), so sorting happens in Python"""
+    occasions = Occasion.query.filter_by(user_id=g.current_user.id).all()
+    occasions.sort(key=lambda occasion: occasion.next_date)
+    return [occasion.to_dict() for occasion in occasions], 200      # OK
+
+# CREATE AN OCCASION
+@app.post("/api/occasions")
+@login_required
+def create_occasion():
+    """Add a birthday (with recipient_id) or holiday (without)"""
+    data = get_json_body()
+    if data is None:
+        return {"error": "Request body must be JSON."}, 400         # Bad Request
+
+    recipient, error = find_recipient_for_occasion(data.get("recipient_id"))
+    if error:
+        return error
+
+    try:
+        occasion = Occasion(
+            name=data.get("name"),
+            date=data.get("date"),
+            repeats_yearly=data.get("repeats_yearly", False),
+            recipient=recipient,
+            user=g.current_user,        # SECURITY: owner from the session; set last, after validation
+        )
+    except ValueError as err:
+        return {"error": str(err)}, 400     # Bad Request
+
+    db.session.add(occasion)
+    db.session.commit()
+    return occasion.to_dict(), 201      # Created
 
 
 # ─── DASHBOARD ROUTE ──────────────────────────────────────────────────
