@@ -386,6 +386,7 @@ def list_occasions():
     occasions.sort(key=lambda occasion: occasion.next_date)
     return [occasion.to_dict() for occasion in occasions], 200      # OK
 
+
 # CREATE AN OCCASION
 @app.post("/api/occasions")
 @login_required
@@ -413,6 +414,76 @@ def create_occasion():
     db.session.add(occasion)
     db.session.commit()
     return occasion.to_dict(), 201      # Created
+
+
+# SEE ONE OCCASION AND ITS ASSIGNED GIFTS
+@app.get("/api/occasions/<int:occasion_id>")
+@login_required
+def get_occasion(occasion_id):
+    """One occasion plus the gifts planned for it"""
+    occasion = get_owned_occasion(occasion_id)
+    if occasion is None:
+        return {"error": "Occasion not found."}, 404        # Not Found
+
+    data = occasion.to_dict()
+    # same checklist order as a recipient's page (unpurchased first, newest first)
+    # recipient_name added because a holiday's gifts can be for different people
+    data["gifts"] = [
+        {**gift.to_dict(), "recipient_name": gift.recipient.name}
+        for gift in sorted(occasion.gifts, key=lambda gift: (gift.purchased, -gift.id))
+    ]
+    return data, 200        # OK
+
+
+# Fields a user may edit directly (recipient_id is checked separately below)
+OCCASION_FIELDS = ("name", "date", "repeats_yearly")
+
+
+# EDIT AN OCCASION
+@app.patch("/api/occasions/<int:occasion_id>")
+@login_required
+def update_occasion(occasion_id):
+    """Update an occasion's fields, including changing or clearing its recipient."""
+    occasion = get_owned_occasion(occasion_id)
+    if occasion is None:
+        return {"error": "Occasion not found."}, 404       # Not Found
+
+    data = get_json_body()
+    if data is None:
+        return {"error": "Request body must ne JSON."}, 400      # Bad Request
+
+    # Check the recipient FIRST, so a bad recipient_id leaves the occasion untouched
+    if "recipient_id" in data:
+        recipient, error = find_recipient_for_occasion(data["recipient_id"])
+        if error:
+            return error
+        occasion.recipient = recipient  # None turns a birthday into a holiday
+
+    try:
+        for field in OCCASION_FIELDS:
+            if field in data:
+                setattr(occasion, field, data[field])
+    except ValueError as err:
+        db.session.rollback()       # undo every change in this request, including the recipient
+        return {"error": str(err)}, 400     # Bad Request
+
+    db.session.commit()
+    return occasion.to_dict(), 200      # OK
+
+
+# DELETE AN OCCASION
+@app.delete("/api/occasions/<int:occasion_id>")
+@login_required
+def delete_occasion(occasion_id):
+    """Delete an occasion; gifts are kept, just unassigned"""
+    occasion = get_owned_occasion(occasion_id)
+    if occasion is None:
+        return {"error": "Occasion not found."}, 404        # Not found
+
+    db.session.delete(occasion)
+    db.session.commit()
+    return "", 204      # No Content
+
 
 
 # ─── DASHBOARD ROUTE ──────────────────────────────────────────────────
