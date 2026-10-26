@@ -2,6 +2,7 @@
 import { Route, Routes } from 'react-router-dom'
 
 import AppLayout from './components/AppLayout.jsx'
+import CalendarPage from './pages/CalendarPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import GuestRoute from './components/GuestRoute.jsx'
 import InterestPage from './pages/InterestPage.jsx'
@@ -34,6 +35,7 @@ function App() {
           <Route path="/recipients/:id" element={<RecipientDetailPage />} />
           <Route path="/recipients/:id/edit" element={<RecipientFormPage />} />
           <Route path="/interests/:id" element={<InterestPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           {/* "*" matches any address no other route matched */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
