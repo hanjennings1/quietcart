@@ -6,7 +6,7 @@ a user owns their recipients, and gifts belong to a user through
 their recipient. Routes rely on this chain for ownership checks.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.orm import validates
@@ -66,6 +66,10 @@ class User(db.Model):
     # INTERESTS:
     # one user has many interests (their own set of chips)
     interests = db.relationship("Interest", back_populates="user", cascade="all, delete-orphan")
+
+    # OCCASIONS:
+    # one user has many occasions (birthday, holidays)
+    occasions = db.relationship("Occasion", back_populates="user", cascade="all, delete-orphan")
 
 
     @validates("username")
@@ -142,6 +146,13 @@ class Recipient(db.Model):
     # deleting a recipient removes their link rows but keeps the interests (other recipients may share them)
     interests = db.relationship(
         "Interest", secondary=recipient_interests, back_populates="recipients"
+    )
+
+    # OCCASIONS:
+    # a recipient's own occasions (like their birthday);
+    # deleting the recipient deletes these too
+    occasions = db.relationship(
+        "Occasion", back_populates="recipient", cascade="all, delete-orphan"
     )
 
 
@@ -222,6 +233,12 @@ class Gift(db.Model):
         db.Integer, db.ForeignKey("recipients.id"), nullable=False, index=True
     )
 
+    # OCCASION (optional):
+    # which occasion this gift is planned for
+    occasion_id = db.Column(
+        db.Integer, db.ForeignKey("occasions.id", ondelete="SET NULL"), index=True
+    )
+
     # DETAILS:
     name = db.Column(db.String(100), nullable=False)  # example: "Pilates class"
     url = db.Column(db.String(500))                    # optional store link
@@ -239,6 +256,10 @@ class Gift(db.Model):
     # RELATIONSHIPS:
     # the other side of Recipient.gifts, so gift.recipient works
     recipient = db.relationship("Recipient", back_populates="gifts")
+
+    # the other side of Occasion.gifts, so gift.occasion works
+    occasion = db.relationship("Occasion", back_populates="gifts")
+
 
     @validates("name")
     def validate_name(self, key, name):
@@ -292,6 +313,7 @@ class Gift(db.Model):
         return {
             "id": self.id,
             "recipient_id": self.recipient_id,
+            "occasion_id": self.occasion_id,
             "name": self.name,
             "url": self.url,
             "price": float(self.price) if self.price is not None else None,
@@ -328,7 +350,6 @@ class Interest(db.Model):
     user = db.relationship("User", back_populates="interests")
     recipients = db.relationship("Recipient", secondary=recipient_interests, back_populates="interests")
 
-
     @staticmethod
     def clean_label(label):
         """Trims spaces, collapses doubles, and lowercases, so "Cats" and " cats " count as the same chip.
@@ -346,3 +367,104 @@ class Interest(db.Model):
     def to_dict(self):
         """Shape of a chip sent to the frontend: just its id and label"""
         return {"id": self.id, "label": self.label}
+
+
+class Occasion(db.Model):
+    """ A date to shop for: a birthday (linked to one recipient) or a holiday (no recipients)"""
+    __tablename__ = "occasions"
+
+    # OCCASION ID:
+    id = db.Column(db.Integer, primary_key=True)
+
+    # OWNERSHIP:
+    # occasions belong to a user directly, like interests
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id"), nullable=False, index=True
+    )
+
+    # RECIPIENT (optional):
+    # set for birthdays, empty for holidays like Christmas
+    recipient_id = db.Column(
+        db.Integer, db.ForeignKey("recipients.id", ondelete="CASCADE"), index=True
+    )
+
+    # DETAILS:
+    name = db.Column(db.String(50), nullable=False)      # "Cameron's Birthday", "Christmas", "Baby Shower"
+    date = db.Column(db.Date, nullable=False)            # First time setting date including year
+    repeats_yearly = db.Column(db.Boolean, nullable=False, default=False)
+
+    # CREATED_AT:
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    # RELATIONSHIPS:
+    user = db.relationship("User", back_populates="occasions")
+    recipient = db.relationship("Recipient", back_populates="occasions")
+    #  deleting an occasion unassigns its gifts (but does not delete them)
+    gifts = db.relationship("Gift", back_populates="occasion")
+
+    @validates("name")
+    def validate_name(self, key, name):
+        """ Name is required """
+        name = (name or "").strip()
+        if not 1 <= len(name) <= 50:
+            raise ValueError("Occasion name is required, must be 1-50 characters.")
+        return name
+
+    @validates("date")
+    def validate_date(self, key, value):
+        """ Accepts a date or a YYYY-MM-DD string from JSON """
+        if isinstance(value, date):
+            return value
+        try:
+            return date.fromisoformat(value)
+        except (TypeError, ValueError):
+            raise ValueError("Date must be in YYYY-MM-DD format.")
+
+    @validates("repeats_yearly")
+    def validate_repeats_yearly(self, key, value):
+        """ JSON sends true/false; rejects anything else """
+        if not isinstance(value, bool):
+            raise ValueError("repeats_yearly must be true or false.")
+        return value
+
+    @property
+    def next_date(self):
+        """ The next time this occasion happens; yearly occasions roll forward to this year (or next year if this year's has passed)
+        one-time occasions just use their date """
+        if not self.repeats_yearly:
+            return self.date
+        today = date.today()
+        upcoming = self._in_year(today.year)
+        if upcoming < today:
+            upcoming = self._in_year(today.year + 1)
+        return upcoming
+
+    def _in_year(self, year):
+        """ This occasions month and day in another year
+        (Feb 29th -> Feb 28th in non-leap years)"""
+        try:
+            return self.date.replace(year=year)
+        except ValueError:
+            return self.date.replace(year=year, day=28)
+
+    @property
+    def days_until(self):
+        """Days from today until next_date
+        ( 0 = today; negative = a past one-time occasion)"""
+        return (self.next_date - date.today()).days
+
+    def to_dict(self):
+        """Shape of an occasion sent to the frontend; next_date and
+        days_until power the countdowns."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "date": self.date.isoformat(),
+            "repeats_yearly": self.repeats_yearly,
+            "recipient_id": self.recipient_id,
+            "recipient_name": self.recipient.name if self.recipient else None,
+            "next_date": self.next_date.isoformat(),
+            "days_until": self.days_until,
+            # unpurchased gifts planned for this occasion
+            "idea_count": sum(1 for gift in self.gifts if not gift.purchased),
+        }

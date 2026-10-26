@@ -8,6 +8,7 @@ import AddIcon from '@mui/icons-material/Add'
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined'
+import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 
 import QuickAddDialog from './QuickAddDialog.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -19,6 +20,7 @@ const SIDEBAR_WIDTH = 220
 const NAV_LINKS = [
     { to: '/', label: 'Dashboard', icon: <HomeOutlinedIcon /> },
     { to: '/recipients', label: 'Recipients', icon: <PeopleOutlinedIcon /> },
+    { to: '/calendar', label: 'Calendar', icon: <CalendarMonthOutlinedIcon /> },
 ]
 
 function AppLayout() {

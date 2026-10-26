@@ -1,14 +1,15 @@
 // The homepage: loads everything from GET /api/dashboard in one request.
 
 import { useEffect, useState } from 'react'
-import { Alert, Box, CircularProgress, Paper, Typography } from '@mui/material'
-import { useOutletContext } from 'react-router-dom'
+import { Alert, Box, Button, CircularProgress, Paper, Typography } from '@mui/material'
+import { Link as RouterLink, useOutletContext } from 'react-router-dom'
 
 import { apiFetch } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { formatMoney } from '../utils/format.js'
 import RecipientSummary from '../components/RecipientSummary.jsx'
 import RecentIdeas from '../components/RecentIdeas.jsx'
+import OccasionList from '../components/OccasionList.jsx'
 
 function DashboardPage() {
     const { user } = useAuth()
@@ -16,7 +17,7 @@ function DashboardPage() {
     // Goes up after every quick-add (shared by AppLayout); keeps this page current without a manual refresh
     const { dataVersion } = useOutletContext()
 
-    // The dashboard data from Flask : { recipients, totals, recent_ideas }
+    // The dashboard data from Flask : { recipients, totals, recent_ideas, upcoming }
     // null = "not loaded yet"
     const [dashboard, setDashboard] = useState(null)
     const [error, setError] = useState('')
@@ -43,7 +44,7 @@ function DashboardPage() {
     }
 
     // 3. LOADED - show the page:
-    const { totals, recipients, recent_ideas } = dashboard
+    const { totals, recipients, recent_ideas, upcoming } = dashboard
 
     // FOUR SUMMARY CARDS - as data, so the JSX below can loop over them
     const stats = [
@@ -76,6 +77,24 @@ function DashboardPage() {
                     </Paper>
                 ))}
             </Box>
+
+            {/* COMING UP: the next few occasions, soonest first (read-only: no edit/delete here) */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h5">Coming up</Typography>
+                <Button component={RouterLink} to="/calendar" size="small">
+                    See calendar
+                </Button>
+            </Box>
+            <Paper sx={{ p: 2, mb: 4 }}>
+                {upcoming.length === 0 ? (
+                    <Typography color="text.secondary">
+                        Nothing coming up. Add birthdays and holidays on the Calendar.
+                    </Typography>
+                ) : (
+                    <OccasionList occasions={upcoming} showRecipient />
+                )}
+            </Paper>
+
             {/* YOUR RECIPIENTS' LISTS: 1 column on phones, 2 on tablets, 3 on wide screens */}
             <Typography variant="h5" sx={{ mb: 2 }}>Your recipients' lists</Typography>
 

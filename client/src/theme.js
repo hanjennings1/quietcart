@@ -53,7 +53,7 @@ const theme = createTheme({
     },
 
     // Rounded corners for cards, buttons, and inputs:
-    shape: { borderRadius: 12 },
+    shape: { borderRadius: 3 },
 })
 
 export default theme

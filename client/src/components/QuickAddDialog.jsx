@@ -40,6 +40,9 @@ function QuickAddContent({ onClose, onSaved, defaultRecipientId }) {
     const [recipients, setRecipients] = useState(null)
     const [loadError, setLoadError] = useState('')
 
+    // all of the user's occasions; filetered below to the ones that fit the chosen recipient
+    const [occasions, setOccasions] = useState([])
+
     // who the idea is for ('' = no one chosen yet)
     const [recipientId, setRecipientId] = useState(defaultRecipientId ?? '')
 
@@ -48,6 +51,10 @@ function QuickAddContent({ onClose, onSaved, defaultRecipientId }) {
         apiFetch('/recipients')
             .then((data) => setRecipients(data))
             .catch((err) => setLoadError(err.message))
+        // occasions are a bonus: if they fail to load, the form still works (without the dropdown):
+        apiFetch('/occasions')
+            .then((data) => setOccasions(data))
+            .catch(() => setOccasions([]))
     }, [])
 
     // GiftForm calls this with the idea's values,
@@ -58,7 +65,14 @@ function QuickAddContent({ onClose, onSaved, defaultRecipientId }) {
         }
         await apiFetch('/gifts', {
             method: 'POST',
-            body: { ...values, recipient_id: recipientId },
+            body: {
+                ...values,
+                recipient_id: recipientId,
+                // if "For" changed after picking an occasion, drop one that no longer fits
+                occasion_id: giftOccasions.some((o) => o.id === values.occasion_id)
+                    ? values.occasion_id
+                    : null,
+            },
         })
         onSaved(recipients.find((recipient) => recipient.id === recipientId))
     }
@@ -87,6 +101,12 @@ function QuickAddContent({ onClose, onSaved, defaultRecipientId }) {
         )
     }
 
+    // Same options as on a recipient's page: their own occasions (birthday) plus holidays.
+    // Recalculated on every render, so it follows the "For" dropdown when it changes.
+    const giftOccasions = occasions.filter(
+        (occasion) => occasion.recipient_id === null || occasion.recipient_id === recipientId
+    )
+
     return (
         <Stack spacing={2} sx={{ pt: 1 }}>
             {/* "select" turns a TextField into a dropdown */}
@@ -104,7 +124,7 @@ function QuickAddContent({ onClose, onSaved, defaultRecipientId }) {
                 ))}
             </TextField>
 
-            <GiftForm submitLabel="Save" onSubmit={handleSubmit} onCancel={onClose} />
+            <GiftForm submitLabel="Save" onSubmit={handleSubmit} onCancel={onClose} occasions={giftOccasions} />
         </Stack>
     )
 }

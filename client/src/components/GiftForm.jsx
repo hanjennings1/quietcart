@@ -2,10 +2,11 @@
 // starts as one quick field & "more details" reveals link, price, and notes
 
 import { useState } from 'react'
-import { Alert, Box, Button, Collapse, InputAdornment, Stack, TextField } from '@mui/material'
+import { Alert, Box, Button, Collapse, InputAdornment, MenuItem, Stack, TextField } from '@mui/material'
+import { formatShortDate } from '../utils/format.js'
 
 // an empty form used for new ideas and for cleaning after one's been added
-const EMPTY_FORM = { name: '', url: '', price: '', notes: '' }
+const EMPTY_FORM = { name: '', url: '', price: '', notes: '', occasion_id: '' }
 
 // Turns a gift from Flask into form values:
 function toFormValues(gift) {
@@ -16,6 +17,7 @@ function toFormValues(gift) {
         url: gift.url ?? '',
         price: gift.price === null ? '' : String(gift.price),
         notes: gift.notes ?? '',
+        occasion_id: gift.occasion_id ?? '',      // '' = no occasion (the dropdown's "None")
     }
 }
 
@@ -23,8 +25,9 @@ function toFormValues(gift) {
 // submitLabel = the button text ("Add" or "Save")
 // onSubmit = receives form values & page saves them to Flask (error shown if it throws)
 // onCancel = optional; shows a Cancel button / used when editing
+// occasions = optional list for the "For an occasion" dropdown (hidden when empty)
 
-function GiftForm({ initialGift = null, submitLabel = 'Add', onSubmit, onCancel }) {
+function GiftForm({ initialGift = null, submitLabel = 'Add', onSubmit, onCancel, occasions = [] }) {
 
     // the function form of useState runs just once, on first render
     const [form, setForm] = useState(() => toFormValues(initialGift))
@@ -49,7 +52,9 @@ function GiftForm({ initialGift = null, submitLabel = 'Add', onSubmit, onCancel 
                 url: form.url,
                 // price: empty means 'no price yet' - send null, not 0
                 price: form.price.trim() === '' ? null : form.price,
-                notes: form.notes
+                notes: form.notes,
+                // dropdown uses '' for no occasion; Flask expects null
+                occasion_id: form.occasion_id === '' ? null : form.occasion_id,
             })
 
             // Adding a new idea: clear the form, ready for next one
@@ -120,6 +125,24 @@ function GiftForm({ initialGift = null, submitLabel = 'Add', onSubmit, onCancel 
                             minRows={2}
                             size="small"
                         />
+                        {/* Only shown when the page passes occasions in */}
+                        {occasions.length > 0 && (
+                            <TextField
+                                select
+                                label="For an occasion"
+                                name="occasion_id"
+                                value={form.occasion_id}
+                                onChange={handleChange}
+                                size="small"
+                            >
+                                <MenuItem value="">None</MenuItem>
+                                {occasions.map((occasion) => (
+                                    <MenuItem key={occasion.id} value={occasion.id}>
+                                        {occasion.name} · {formatShortDate(occasion.next_date)}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        )}
                     </Stack>
                 </Collapse>
 
