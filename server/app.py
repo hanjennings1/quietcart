@@ -92,6 +92,25 @@ def find_recipient_for_occasion(recipient_id):
         return None, ({"error": "Recipient not found."}, 404)       # Not Found
     return recipient, None
 
+def find_occasion_for_gift(occasion_id, recipient):
+    """Check an optional occasion_id for a gift. Used by both create and edit.
+
+    Returns (occasion, error). occasion is None when unassigned. error is a
+    ready-to-return response if the id is invalid, isn't this user's, or is
+    another person's birthday (holidays, with no recipient, take anyone's gifts).
+    """
+    if occasion_id is None:
+        return None, None       # unassigned
+    # bool excluded since Python treats True = 1
+    if not isinstance(occasion_id, int) or isinstance(occasion_id, bool):
+        return None, ({"error": "occasion_id must be a number."}, 400)     # Bad Request
+    occasion = get_owned_occasion(occasion_id)       # SECURITY: must be this user's
+    if occasion is None:
+        return None, ({"error": "Occasion not found."}, 404)       # Not Found
+    if occasion.recipient_id is not None and occasion.recipient_id != recipient.id:
+        return None, ({"error": "That occasion is for a different recipient."}, 400)     # Bad Request
+    return occasion, None
+
 
 # ─── RECIPIENT ROUTES ─────────────────────────────────────────────────
 # SEE LIST OF RECIPIENTS FOR THIS USER
@@ -227,12 +246,17 @@ def create_gift():
     if recipient is None:
         return {"error": "Recipient not found."}, 404      # Not Found
 
+    occasion, error = find_occasion_for_gift(data.get("occasion_id"), recipient)
+    if error:
+        return error
+
     try:
         gift = Gift(
             name=data.get("name"),
             url=data.get("url"),
             price=data.get("price"),
             notes=data.get("notes"),
+            occasion=occasion,
             recipient=recipient,
         )
     except ValueError as err:
@@ -263,23 +287,12 @@ def update_gift(gift_id):
     if data is None:
         return {"error": "Request body must be JSON."}, 400     # Bad Request
 
-    # ASSIGN TO AN OCCASION (or unassign with null).
-    # Checked before other fields, so a bad occasion_id changes nothing.
+    # ASSIGN TO AN OCCASION (or unassign with null); checked first, so a bad id changes nothing
     if "occasion_id" in data:
-        occasion_id = data["occasion_id"]
-        if occasion_id is None:
-            gift.occasion = None        # unassign
-        else:
-            # bool excluded since Python treats True = 1
-            if not isinstance(occasion_id, int) or isinstance(occasion_id, bool):
-                return {"error": "occasion_id must be a number."}, 400      # Bad Request
-            occasion = get_owned_occasion(occasion_id)      # SECURITY: must be this user's
-            if occasion is None:
-                return {"error": "Occasion not found."}, 404        # Not Found
-            # A birthday belongs to one person; holidays (no recipient) take anyone's gifts:
-            if occasion.recipient_id is not None and occasion.recipient_id != gift.recipient_id:
-                return {"error": "That occasion is for a different recipient."}, 400        # Bad Request
-            gift.occasion = occasion
+        occasion, error = find_occasion_for_gift(data["occasion_id"], gift.recipient)
+        if error:
+            return error
+        gift.occasion = occasion
 
     try:
         for field in GIFT_FIELDS:

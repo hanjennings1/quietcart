@@ -170,3 +170,16 @@ def test_cannot_assign_gift_to_another_users_occasion(client, login_as, occasion
 
     assert response.status_code == 404
     assert db.session.get(Gift, occasions_data["gloves_id"]).occasion_id is None
+
+
+def test_cannot_create_gift_on_another_recipients_birthday(client, login_as, occasions_data):
+    """Creating (not just editing) a gift also checks the occasion's recipient."""
+    login_as("hannah")
+    response = client.post(
+        "/api/gifts",
+        json={"recipient_id": occasions_data["emma_id"], "name": "Wrong party",
+              "occasion_id": occasions_data["erin_birthday_id"]},
+    )
+
+    assert response.status_code == 400
+    assert Gift.query.filter_by(name="Wrong party").first() is None
