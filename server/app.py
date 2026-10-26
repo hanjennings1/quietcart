@@ -534,6 +534,8 @@ def delete_occasion(occasion_id):
 # How many recent ideas the homepage shows
 RECENT_IDEAS_LIMIT = 5
 
+# How many upcoming occasions the homepage shows
+UPCOMING_LIMIT = 3
 
 # VIEW THE DASHBOARD/HOMEPAGE
 @app.get("/api/dashboard")
@@ -544,6 +546,7 @@ def dashboard():
         - recipients: each recipient with budget, spent, and unpurchased ideas
         - totals: overall numbers for the summary cards
         - recent_ideas: the newest unpurchased ideas, each with its recipient's name
+        - upcoming: the next few occasions with countdown to them
     """
     # RECIPIENT SUMMARIES:
     recipients = (
@@ -589,6 +592,15 @@ def dashboard():
         idea["recipient_name"] = gift.recipient.name
         recent_ideas.append(idea)
 
+    # COMING UP:
+    # the  next few occasions that have not passed yet
+    occasions = Occasion.query.filter_by(user_id=g.current_user.id).all()
+    upcoming = sorted(
+        (occasion for occasion in occasions if occasion.days_until >= 0),
+        key=lambda occasion: occasion.next_date,
+    )[:UPCOMING_LIMIT]      # takes the first 3 items of the sorted list, or fewer if there aren’t 3
+
+
     return {
         "recipients": recipient_summaries,
         "totals": {
@@ -598,6 +610,7 @@ def dashboard():
             "spent": float(total_spent),
         },
         "recent_ideas": recent_ideas,
+        "upcoming": [occasion.to_dict() for occasion in upcoming],
     }, 200      # OK
 
 

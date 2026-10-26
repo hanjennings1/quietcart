@@ -183,3 +183,10 @@ def test_cannot_create_gift_on_another_recipients_birthday(client, login_as, occ
 
     assert response.status_code == 400
     assert Gift.query.filter_by(name="Wrong party").first() is None
+
+
+def test_dashboard_shows_upcoming_occasions_soonest_first(client, login_as, occasions_data):
+    login_as("hannah")
+    upcoming = client.get("/api/dashboard").get_json()["upcoming"]
+
+    assert [o["name"] for o in upcoming] == ["Emma's party", "Holiday", "Erin's birthday"]
