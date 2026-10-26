@@ -154,6 +154,11 @@ def get_recipient(recipient_id):
         gift.to_dict()
         for gift in sorted(recipient.gifts, key=lambda gift: (gift.purchased, -gift.id))    # -gift.id = newer first
     ]
+    # This recipient's occasions (birthday/etc); soonest first
+    data["occasions"] = [
+        occasion.to_dict()
+        for occasion in sorted(recipient.occasions, key=lambda o: o.next_date)
+    ]
     return data, 200        #OK
 
 
