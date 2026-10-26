@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { Link as RouterLink, useOutletContext, useNavigate } from 'react-router-dom'
-import { Alert, Box, Button, Chip, CircularProgress, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button, Chip, CircularProgress, InputAdornment, Stack, TextField, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
+import SearchIcon from '@mui/icons-material/Search'
 
 import { apiFetch } from '../api.js'
 import RecipientCard from '../components/RecipientCard.jsx'
@@ -21,6 +22,9 @@ function RecipientsPage() {
 
     // All of the user's chips, for the filer row - [] until loaded
     const [interests, setInterests] = useState([])
+
+    // What is typed in the searc bar ('' = show everyone)
+    const [search, setSearch] = useState('')
 
     // Load the recipients when the page opens and again after a quick-add
     useEffect(() => {
@@ -57,6 +61,15 @@ function RecipientsPage() {
         .filter((interest) => interest.recipient_count >= 2)
         .sort((a, b) => b.recipient_count - a.recipient_count)
 
+    // SEARCH: case-insensitive match on name / relationship / interest label
+    const query = search.trim().toLowerCase()
+    const visibleRecipients = query === ''
+        ? recipients
+        : recipients.filter((recipient) =>
+            [recipient.name, recipient.relationship ?? '', ...recipient.interests.map((i) => i.label)]
+                .some((text) => text.toLowerCase().includes(query))
+        )
+
     // 3. LOADED
     return (
         <Box>
@@ -87,6 +100,28 @@ function RecipientsPage() {
                 </Button>
             </Box>
 
+            {/* SEARCH: only shown once there's someone to search */}
+            {recipients.length > 0 && (
+                <TextField
+                    placeholder="Search by name, relationship, or interest"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    size="small"
+                    fullWidth
+                    sx={{ mb: 3, maxWidth: 420 }}
+                    slotProps={{
+                        input: {
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon />
+                                </InputAdornment>
+                            ),
+                        },
+                        htmlInput: { 'aria-label': 'Search recipients' },
+                    }}
+                />
+            )}
+
             {/* INTEREST FILTER: shared chips only; click one to see who shares it */}
             {sharedInterests.length > 0 && (
                 <Box sx={{ mb: 3 }}>
@@ -110,6 +145,10 @@ function RecipientsPage() {
                 <Typography color="text.secondary">
                     No recipients yet. Add the first person you shop for!
                 </Typography>
+            ) : visibleRecipients.length === 0 ? (
+                <Typography color="text.secondary">
+                    No recipients match "{search}".
+                </Typography>
             ) : (
                 <Box
                     sx={{
@@ -118,11 +157,12 @@ function RecipientsPage() {
                         gap: 2,
                     }}
                 >
-                    {recipients.map((recipient) => (
+                    {visibleRecipients.map((recipient) => (
                         <RecipientCard key={recipient.id} recipient={recipient} />
                     ))}
                 </Box>
             )}
+
         </Box>
     )
 }
