@@ -186,6 +186,9 @@ function RecipientDetailPage() {
     // 3. LOADED
     const color = recipientColor(recipient.id)
 
+    // Occasions a gift for this person can go on: their own (birthday) plus holidays
+    const giftOccasions = [...recipient.occasions, ...recipient.holidays]
+
     return (
         <Box sx={{ maxWidth: 800 }}>
             <Button component={RouterLink} to="/recipients" startIcon={<ArrowBackIcon />} sx={{ mb: 2 }}>
@@ -273,7 +276,7 @@ function RecipientDetailPage() {
 
             {/* ADD AN IDEA */}
             <Paper sx={{ p: 2, mb: 2 }}>
-                <GiftForm onSubmit={handleAddGift} />
+                <GiftForm onSubmit={handleAddGift} occasions={giftOccasions} />
             </Paper>
             {recipient.gifts.length === 0 ? (
                 <Typography color="text.secondary">No gift ideas yet.</Typography>
@@ -290,6 +293,7 @@ function RecipientDetailPage() {
                                     submitLabel="Save"
                                     onSubmit={handleSaveGift}
                                     onCancel={() => setEditingGiftId(null)}
+                                    occasions={giftOccasions}
                                 />
                             </Paper>
                         ) : (

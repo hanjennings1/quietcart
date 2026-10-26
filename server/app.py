@@ -92,6 +92,7 @@ def find_recipient_for_occasion(recipient_id):
         return None, ({"error": "Recipient not found."}, 404)       # Not Found
     return recipient, None
 
+
 def find_occasion_for_gift(occasion_id, recipient):
     """Check an optional occasion_id for a gift. Used by both create and edit.
 
@@ -177,6 +178,12 @@ def get_recipient(recipient_id):
     data["occasions"] = [
         occasion.to_dict()
         for occasion in sorted(recipient.occasions, key=lambda o: o.next_date)
+    ]
+    # Holidays (occasions with no recipient) can hold this person's gifts too,
+    # so the gift form's occasion dropdown needs them as options
+    holidays = Occasion.query.filter_by(user_id=g.current_user.id, recipient_id=None).all()
+    data["holidays"] = [
+        occasion.to_dict() for occasion in sorted(holidays, key=lambda o: o.next_date)
     ]
     return data, 200        #OK
 
@@ -487,7 +494,7 @@ def update_occasion(occasion_id):
 
     data = get_json_body()
     if data is None:
-        return {"error": "Request body must ne JSON."}, 400      # Bad Request
+        return {"error": "Request body must be JSON."}, 400      # Bad Request
 
     # Check the recipient FIRST, so a bad recipient_id leaves the occasion untouched
     if "recipient_id" in data:
