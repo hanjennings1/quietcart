@@ -7,6 +7,7 @@ import { Alert, Box, Button, CircularProgress, Link, Paper, Stack, Typography } 
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import AddIcon from '@mui/icons-material/Add'
 
 import { apiFetch } from '../api.js'
 import BudgetBar from '../components/BudgetBar.jsx'
@@ -14,6 +15,8 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import GiftItem from '../components/GiftItem.jsx'
 import GiftForm from '../components/GiftForm.jsx'
 import InterestChips from '../components/InterestChips.jsx'
+import OccasionDialog from '../components/OccasionDialog.jsx'
+import OccasionList from '../components/OccasionList.jsx'
 import { recipientColor } from '../theme.js'
 
 
@@ -41,6 +44,15 @@ function RecipientDetailPage() {
     // The gift waiting for delete confirmation (opens the pop-up), or null
     const [giftToDelete, setGiftToDelete] = useState(null)
     const [deletingGift, setDeletingGift] = useState(false)
+
+    // The occasion pop-up: open/closed, which occasion is being edited (null = adding)
+    const [occasionDialogOpen, setOccasionDialogOpen] = useState(false)
+    const [editingOccasion, setEditingOccasion] = useState(null)
+
+    // The occasion waiting for delete confirmation (or null)
+    const [occasionToDelete, setOccasionToDelete] = useState(null)
+    const [deletingOccasion, setDeletingOccasion] = useState(false)
+
 
     // Loads (or reloads) the recipient
     // wrapped in useCallback so React reuses the same function between renders
@@ -116,6 +128,38 @@ function RecipientDetailPage() {
             setGiftToDelete(null)
         } finally {
             setDeletingGift(false)
+        }
+    }
+
+    // Open the occasion pop-up empty (add) or filled in (edit)
+    function openAddOccasion() {
+        setEditingOccasion(null)
+        setOccasionDialogOpen(true)
+    }
+
+    function openEditOccasion(occasion) {
+        setEditingOccasion(occasion)
+        setOccasionDialogOpen(true)
+    }
+
+    // After the pop-up saves: close it and re-load (so list and countdown update)
+    async function handleOccasionSaved() {
+        setOccasionDialogOpen(false)
+        await loadRecipient()
+    }
+
+    // Delete the occasion after the user confirms
+    async function handleDeleteOccasion() {
+        setDeletingOccasion(true)
+        try {
+            await apiFetch(`/occasions/${occasionToDelete.id}`, { method: 'DELETE' })
+            setOccasionToDelete(null)
+            await loadRecipient()
+        } catch (err) {
+            setError(err.message)
+            setOccasionToDelete(null)
+        } finally {
+            setDeletingOccasion(false)
         }
     }
 
@@ -208,6 +252,22 @@ function RecipientDetailPage() {
                 </Box>
             </Paper>
 
+            {/* ─── OCCASIONS ─── */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h5">Occasions</Typography>
+                <Button startIcon={<AddIcon />} onClick={openAddOccasion}>
+                    Add occasion
+                </Button>
+            </Box>
+            <Paper sx={{ p: 2, mb: 4 }}>
+                <OccasionList
+                    occasions={recipient.occasions}
+                    color={color}
+                    onEdit={openEditOccasion}
+                    onDelete={setOccasionToDelete}
+                />
+            </Paper>
+
             {/* ─── GIFT IDEAS ─── */}
             <Typography variant="h5" sx={{ mb: 2 }}>Gift ideas</Typography>
 
@@ -266,6 +326,26 @@ function RecipientDetailPage() {
                 onConfirm={handleDeleteGift}
                 onCancel={() => setGiftToDelete(null)}
             />
+
+            {/* ─── ADD / EDIT OCCASION ─── */}
+            <OccasionDialog
+                open={occasionDialogOpen}
+                occasion={editingOccasion}
+                recipientId={recipient.id}
+                onClose={() => setOccasionDialogOpen(false)}
+                onSaved={handleOccasionSaved}
+            />
+
+            {/* ─── DELETE OCCASION CONFIRMATION ─── */}
+            <ConfirmDialog
+                open={occasionToDelete !== null}
+                title={`Delete ${occasionToDelete?.name}?`}
+                message="Gift ideas planned for it stay on the list; they just won't be assigned to an occasion."
+                busy={deletingOccasion}
+                onConfirm={handleDeleteOccasion}
+                onCancel={() => setOccasionToDelete(null)}
+            />
+
         </Box>
     )
 }
