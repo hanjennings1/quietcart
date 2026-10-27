@@ -29,7 +29,7 @@ function occursOn(occasion, day) {
 
 // Same colors as everywhere else: the recipient's color, or gold for holidays
 function occasionColor(occasion) {
-    return occasion.recipient_id ? recipientColor(occasion.recipient_id) : GOLD
+    return occasion.recipient_id ? recipientColor(occasion.recipient_color) : GOLD
 }
 
 export default function MonthGrid({ month, occasions, onOccasionClick, onDayClick }) {

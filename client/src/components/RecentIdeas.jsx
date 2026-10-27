@@ -41,7 +41,7 @@ function RecentIdeas({ ideas }) {
                             clickable
                             size="small"
                             sx={{
-                                bgcolor: alpha(recipientColor(idea.recipient_id), 0.3),
+                                bgcolor: alpha(recipientColor(idea.recipient_color), 0.3),
                                 color: 'primary.main',
                                 fontWeight: 600,
                             }}

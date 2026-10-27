@@ -21,7 +21,7 @@ const MAX_IDEAS = 3
 // { id, name, relationship, budget, spent, interests: [...], ideas: [...] }
 function RecipientSummary({ recipient }) {
     // The same color everywhere for this recipient, based on their id
-    const color = recipientColor(recipient.id)
+    const color = recipientColor(recipient.color)
     const navigate = useNavigate()
 
     // First few chips for a quick "what do they like?" glance while shopping

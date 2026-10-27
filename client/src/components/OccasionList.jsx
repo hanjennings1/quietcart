@@ -36,7 +36,7 @@ export default function OccasionList({
                 // The row's color: a passed-in color wins (recipient page); otherwise the
                 // recipient's own color (matches their dashboard card), or gold for holidays
                 const rowColor = color
-                    ?? (occasion.recipient_id ? recipientColor(occasion.recipient_id) : GOLD)
+                    ?? (occasion.recipient_id ? recipientColor(occasion.recipient_color) : GOLD)
                 const next = dayjs(occasion.next_date)
                 return (
                     <Box
