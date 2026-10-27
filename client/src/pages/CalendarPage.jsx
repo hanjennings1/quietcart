@@ -1,20 +1,19 @@
-// The /calendar page: a month calendar with a dot on every day that has an occasion,
-// and a list of that month's occasions (holidays included) beside it.
+// The /calendar page: a month grid with occasions written inside their days,
+// plus a list of this month's occasions (with countdowns) underneath.
 
 import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import dayjs from 'dayjs'
-import { Alert, Badge, Box, Button, CircularProgress, Paper, Typography } from '@mui/material'
+import { Alert, Box, Button, CircularProgress, IconButton, Paper, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
-import { DateCalendar } from '@mui/x-date-pickers/DateCalendar'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { PickerDay } from '@mui/x-date-pickers/PickerDay'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
 import { apiFetch } from '../api.js'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import OccasionDialog from '../components/OccasionDialog.jsx'
 import OccasionList from '../components/OccasionList.jsx'
+import MonthGrid from '../components/MonthGrid.jsx'
 
 
 // Does this occasion happen in the given month (a dayjs date)?
@@ -23,17 +22,6 @@ function occursInMonth(occasion, month) {
     const date = dayjs(occasion.date)
     if (occasion.repeats_yearly) return date.month() === month.month()
     return date.isSame(month, 'month')      // same month AND same year
-}
-
-// One day square on the calendar, DateCalendar renders this for every day
-// A gold dot appears when that day number is in occasionDays
-function OccasionDay({ occasionDays = [], day, outsideCurrentMonth, ...other }) {
-    const hasOccasion = !outsideCurrentMonth && occasionDays.includes(day.date())
-    return (
-        <Badge overlap="circular" variant="dot" color="secondary" invisible={!hasOccasion}>
-            <PickerDay {...other} day={day} outsideCurrentMonth={outsideCurrentMonth} />
-        </Badge>
-    )
 }
 
 function CalendarPage() {
@@ -50,6 +38,7 @@ function CalendarPage() {
     // The add/edit pop-up and the delete confirmation:
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editingOccasion, setEditingOccasion] = useState(null)
+    const [defaultDate, setDefaultDate] = useState(null)        // The date to prefill when adding from a clicked day ("YYYY-MM-DD"), or null
     const [occasionToDelete, setOccasionToDelete] = useState(null)
     const [deleting, setDeleting] = useState(false)
 
@@ -67,8 +56,10 @@ function CalendarPage() {
             .catch(() => setRecipients([]))
     }, [loadOccasions, dataVersion])
 
-    function openAdd() {
+    // Add from the header button (no date) or by clicking a day (that date prefilled)
+    function openAdd(day = null) {
         setEditingOccasion(null)
+        setDefaultDate(day ? day.format('YYYY-MM-DD') : null)
         setDialogOpen(true)
     }
 
@@ -97,7 +88,7 @@ function CalendarPage() {
     }
 
     // 1. ERROR with nothing to show
-    if (error && occasions ==+ null) {
+    if (error && occasions === null) {
         return <Alert severity="error">{error}</Alert>
     }
 
@@ -114,7 +105,6 @@ function CalendarPage() {
     const monthOccasions = occasions
         .filter((occasion) => occursInMonth(occasion, month))
         .sort((a, b) => dayjs(a.date).date() - dayjs(b.date).date())
-    const occasionDays = monthOccasions.map((occasion) => dayjs(occasion.date).date())
 
     return (
         <Box>
@@ -124,38 +114,47 @@ function CalendarPage() {
                     <Typography variant="h3" color="primary">Calendar</Typography>
                     <Typography color="text.secondary">Birthdays, holidays, and everything in between.</Typography>
                 </Box>
-                <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={openAdd}>
+                <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={() => openAdd()}>
                     Add occasion
                 </Button>
             </Box>
 
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            {/* Calendar and list side by side on wide screens, stacked on phones */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'auto 1fr' }, gap: 3, alignItems: 'start' }}>
-                <Paper>
-                    {/* LocalizationProvider tells MUI X to use dayjs for dates */}
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <DateCalendar
-                            referenceDate={month}
-                            onMonthChange={(newMonth) => setMonth(newMonth.startOf('month'))}
-                            onYearChange={(newYear) => setMonth(newYear.startOf('month'))}
-                            slots={{ day: OccasionDay }}
-                            slotProps={{ day: { occasionDays } }}
-                        />
-                    </LocalizationProvider>
-                </Paper>
+            {/* ─── MONTH GRID ─── */}
+            <Paper sx={{ p: 2, mb: 3 }}>
+                {/* Month name on the left; Today and ‹ › on the right */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Typography variant="h5" sx={{ flexGrow: 1 }}>{month.format('MMMM YYYY')}</Typography>
+                    <Button variant="outlined" size="small" onClick={() => setMonth(dayjs().startOf('month'))}>
+                        Today
+                    </Button>
+                    <IconButton aria-label="Previous month" onClick={() => setMonth(month.subtract(1, 'month'))}>
+                        <ChevronLeftIcon />
+                    </IconButton>
+                    <IconButton aria-label="Next month" onClick={() => setMonth(month.add(1, 'month'))}>
+                        <ChevronRightIcon />
+                    </IconButton>
+                </Box>
 
-                <Paper sx={{ p: 2 }}>
-                    <Typography variant="h5" sx={{ mb: 2 }}>{month.format('MMMM YYYY')}</Typography>
-                    <OccasionList
-                        occasions={monthOccasions}
-                        onEdit={openEdit}
-                        onDelete={setOccasionToDelete}
-                        showRecipient
-                    />
-                </Paper>
-            </Box>
+                <MonthGrid
+                    month={month}
+                    occasions={occasions}
+                    onOccasionClick={openEdit}
+                    onDayClick={openAdd}
+                />
+            </Paper>
+
+            {/* ─── THIS MONTH: countdowns, idea counts, edit and delete ─── */}
+            <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" sx={{ mb: 2 }}>This month</Typography>
+                <OccasionList
+                    occasions={monthOccasions}
+                    onEdit={openEdit}
+                    onDelete={setOccasionToDelete}
+                    showRecipient
+                />
+            </Paper>
 
             {/* ADD / EDIT: the "For" dropdown appears because recipients are passed */}
             <OccasionDialog
@@ -164,6 +163,7 @@ function CalendarPage() {
                 recipients={recipients}
                 onClose={() => setDialogOpen(false)}
                 onSaved={handleSaved}
+                defaultDate={defaultDate}
             />
 
             <ConfirmDialog
