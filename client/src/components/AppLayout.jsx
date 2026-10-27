@@ -67,6 +67,12 @@ function AppLayout() {
                     display: 'flex',
                     flexDirection: 'column',
                     p: 2,
+                    // STICKY: exactly one screen tall and pinned while the page scrolls,
+                    // so + Idea stays at the top and Log out at the bottom, always visible
+                    position: 'sticky',
+                    top: 0,
+                    height: '100vh',
+                    overflowY: 'auto',           // a very short window can still scroll the sidebar itself
                 }}
             >
                 <Typography variant="h4" sx={{ color: 'inherit', mb: 4, px: 1 }}>
