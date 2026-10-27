@@ -2,6 +2,9 @@
 
 *your private shopping list for the people you love*
 
+**Live demo:** https://quietcart-hi5t.onrender.com
+*(free hosting: the first visit after a quiet spell can take about a minute to wake up)*
+
 quietcart is a year-round gift planner. Save gift ideas the moment someone mentions them, set a budget for each person, tag them with interest chips, and check gifts off as you buy them. Every list is private to its owner's account.
 
 **Stack:** Flask · PostgreSQL · SQLAlchemy · React (Vite) · React Router · Material UI · session-based auth
@@ -135,6 +138,23 @@ quietcart/
         └── pages/      # one file per route
 ```
 
+## Deployment
+
+quietcart runs on **Render** (web service) with a **Neon** PostgreSQL database.
+In production, Flask serves the built React app, so the site and API share one
+domain (required for the session cookie).
+
+- **Build command:** `pip install -r server/requirements.txt && npm install --prefix client && npm run build --prefix client && cd server && flask db upgrade`
+- **Start command:** `gunicorn --chdir server app:app`
+- **Environment variables:** `DATABASE_URL` (Neon connection string), `SECRET_KEY`, `PYTHON_VERSION=3.12.14`
+
+After adding a Python package with `pipenv install`, regenerate the requirements file:
+
+```bash
+cd server
+pipenv requirements > requirements.txt
+```
+
 ## Known bugs and limitations
 
 - Recipient colors repeat after six recipients (colors are assigned by id).
@@ -142,8 +162,10 @@ quietcart/
 - The browser console shows suggestions about form fields missing `id`/`name`/`autocomplete` attributes.
 - The tagline wraps onto two lines on the login card at some screen sizes.
 - The Recipients filter row shows only interests shared by 2+ recipients; a "show all" option is planned if the row gets long.
-- Not yet deployed; runs locally only.
 
-## Coming in Week 2
+## Future ideas
 
-Occasions (birthdays and holidays) with countdowns and a calendar view, a dashboard upgrade, styling polish, and deployment to Render.
+- Gift history with a "given before" warning, and archiving recipients instead of deleting them
+- Rule-based dates for moving holidays (like Mother's Day)
+- Account settings (change password, delete account)
+- A seasonal Winter theme toggle
