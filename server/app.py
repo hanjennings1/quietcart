@@ -26,6 +26,17 @@ from models import Gift, Interest, Occasion, Recipient
 app.register_blueprint(auth_bp)
 
 
+# ─── REACT PAGES ──────────────────────────────────────────────────────
+# Page addresses like /recipients/5 aren't Flask routes; they belong to React Router.
+# When Flask can't find an address: API addresses get a JSON 404 (as always),
+# and everything else gets React's index.html, so React shows the right page.
+@app.errorhandler(404)
+def not_found(error):
+    if request.path.startswith("/api/"):
+        return {"error": "Not found."}, 404
+    return app.send_static_file("index.html")
+
+
 # ─── OWNERSHIP HELPERS ────────────────────────────────────────────────
 # Every route that touches one record goes through these,
 # so the ownership rule is written once instead of repeated in every route
