@@ -40,8 +40,8 @@ function AuthForm({ title, submitLabel, onSubmit, footer, isSignup = false }) {
                 p: 2,
             }}
         >
-            <Paper sx={{ p: 4, width: '100%', maxWidth: 400 }}>
-                <Typography variant="h3" color="primary">quietcart</Typography>
+            <Paper sx={{ p: 6, width: '100%', maxWidth: 500 }}>
+                <Typography variant="h3" color="primary" sx={{ mb: 1 }}>quietcart</Typography>
                 <Typography color="text.secondary" sx={{ mb: 3 }}>
                     your private shopping list for the people you love
                 </Typography>

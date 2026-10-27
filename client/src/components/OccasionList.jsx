@@ -90,17 +90,31 @@ export default function OccasionList({
                                 variant={soon ? 'filled' : 'outlined'}
                             />
 
-                            {/* ACTIONS (only when the page passes them in) */}
-                            {onEdit && (
-                                <IconButton size="small" aria-label={`Edit ${occasion.name}`} onClick={() => onEdit(occasion)}>
-                                    <EditOutlinedIcon fontSize="small" />
-                                </IconButton>
-                            )}
-                            {onDelete && (
-                                <IconButton size="small" aria-label={`Delete ${occasion.name}`} onClick={() => onDelete(occasion)}>
-                                    <DeleteOutlinedIcon fontSize="small" />
-                                </IconButton>
-                            )}
+                        {/* ACTIONS (only when the page passes them in) */}
+                        {onEdit && (
+                            <IconButton
+                                size="small"
+                                aria-label={`Edit ${occasion.name}`}
+                                onClick={(event) => {
+                                    event.currentTarget.blur()  // let the dialog take focus cleanly
+                                    onEdit(occasion)
+                                }}
+                            >
+                                <EditOutlinedIcon fontSize="small" />
+                            </IconButton>
+                        )}
+                        {onDelete && (
+                            <IconButton
+                                size="small"
+                                aria-label={`Delete ${occasion.name}`}
+                                onClick={(event) => {
+                                    event.currentTarget.blur()
+                                    onDelete(occasion)
+                                }}
+                            >
+                                <DeleteOutlinedIcon fontSize="small" />
+                            </IconButton>
+                        )}
                         </Box>
                     )
                 })}
