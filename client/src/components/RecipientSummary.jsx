@@ -14,6 +14,9 @@ import { formatMoney } from '../utils/format.js'
 // How many chips fit on a dashboard card before the rest collapse into "+N"
 const MAX_CHIPS = 3
 
+// How many ideas a dashboard card shows before the rest collapse into "+N more"
+const MAX_IDEAS = 3
+
 // recipient: one item from the dashboard's "recipients" list:
 // { id, name, relationship, budget, spent, interests: [...], ideas: [...] }
 function RecipientSummary({ recipient }) {
@@ -24,6 +27,10 @@ function RecipientSummary({ recipient }) {
     // First few chips for a quick "what do they like?" glance while shopping
     const shownChips = recipient.interests.slice(0, MAX_CHIPS)
     const hiddenCount = recipient.interests.length - shownChips.length
+
+    // First few ideas; the full list is one click away on the recipient's page
+    const shownIdeas = recipient.ideas.slice(0, MAX_IDEAS)
+    const hiddenIdeas = recipient.ideas.length - shownIdeas.length
 
     return (
         // overflow: hidden, keeps the color stripe inside rounded corners
@@ -82,7 +89,7 @@ function RecipientSummary({ recipient }) {
                     <Typography variant="body2" color="text.secondary">No ideas yet</Typography>
                 ) : (
                     <Stack spacing={1}>
-                        {recipient.ideas.map((idea) => (
+                        {shownIdeas.map((idea) => (
                             // A soft tint of the recipient's color behind each idea
                             <Box
                                 key={idea.id}
@@ -110,6 +117,19 @@ function RecipientSummary({ recipient }) {
                             </Box>
                         ))}
                     </Stack>
+                )}
+
+                {/* the rest live on the recipient's page */}
+                {hiddenIdeas > 0 && (
+                    <Link
+                        component={RouterLink}
+                        to={`/recipients/${recipient.id}`}
+                        variant="body2"
+                        underline="hover"
+                        sx={{ display: 'inline-block', mt: 1 }}
+                    >
+                        +{hiddenIdeas} more {hiddenIdeas === 1 ? 'idea' : 'ideas'}
+                    </Link>
                 )}
             </Box>
         </Paper>
