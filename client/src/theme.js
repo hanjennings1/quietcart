@@ -10,18 +10,21 @@ export const GOLD = '#D3AF37'   // page accent: secondary buttons, active nav
 // Neon colors for RECIPIENTS ONLY (card stripe, idea chips, budget bar).
 // Always pair them with navy text: white text on neon is hard to read.
 export const RECIPIENT_COLORS = [
-    '#EB5E28', // paprika
+    '#FF4700', // crimson
     '#18DCF2', // cyan
-    '#FF4FD8', // pink
+    '#FF2693', // pink
     '#BBFD21', // chartreuse
-    '#A77BFF', // violet
+    '#A77BFF', // purple
     '#F9E900', // lemon
+    '#FF00FF', // magenta
+    '#2EF5A0', // mint
+    '#FF8800', // orange
 ]
 
-// A recipient's color, based on their id.
-// Using the id (not their spot in a list) means a recipient keeps the same color on every page.
-export function recipientColor(recipientId) {
-    return RECIPIENT_COLORS[recipientId % RECIPIENT_COLORS.length]
+// A recipient's stored color number → its hex color.
+// % keeps it safe if a number is ever out of range.
+export function recipientColor(colorIndex) {
+    return RECIPIENT_COLORS[colorIndex % RECIPIENT_COLORS.length]
 }
 
 
