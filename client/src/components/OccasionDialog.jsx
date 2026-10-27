@@ -7,6 +7,7 @@
  *   occasion               - an existing occasion to edit (null = add a new one)
  *   recipientId            - fixed recipient (used on a recipient's page)
  *   recipients             - list for a "For" dropdown (used on the Calendar page)
+ *   defaultDate            - "YYYY-MM-DD" to prefill when adding (from clicking a calendar day)
  *
  * The form lives in its own inner component: MUI removes a Dialog's contents
  * when it closes, so the form starts fresh every time it opens.
@@ -21,7 +22,7 @@ import { apiFetch } from '../api.js'
 
 
 export default function OccasionDialog({
-    open, onClose, onSaved, occasion = null, recipientId = null, recipients = null
+    open, onClose, onSaved, occasion = null, recipientId = null, recipients = null, defaultDate = null,
 }) {
     return (
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
@@ -31,20 +32,21 @@ export default function OccasionDialog({
                 recipients={recipients}
                 onClose={onClose}
                 onSaved={onSaved}
+                defaultDate={defaultDate}
             />
         </Dialog>
     )
 }
 
-function OccasionForm({ occasion, recipientId, recipients, onClose, onSaved }) {
+function OccasionForm({ occasion, recipientId, recipients, defaultDate, onClose, onSaved }) {
     const isEdit = occasion !== null
 
     // Start from the occasion being edited, or defaults for new occasion
     const [form, setForm] = useState({
         name: occasion?.name ?? '',
-        date: occasion?.date ?? '',                                        // YYYY-MM-DD (what Flask expects)
-        repeats_yearly: occasion?.repeats_yearly ?? true,                 // default since most do repeat yearly
-        recipient_id: occasion?.recipient_id ?? recipientId ?? '',       // no recipient = holiday (like Christmas)
+        date: occasion?.date ?? defaultDate ?? '',                      // editing → its date; clicked a day → that day
+        repeats_yearly: occasion?.repeats_yearly ?? true,               // default since most do repeat yearly
+        recipient_id: occasion?.recipient_id ?? recipientId ?? '',      // no recipient = holiday (like Christmas)
     })
     const [error, setError] = useState('')
     const [saving, setSaving] = useState(false)

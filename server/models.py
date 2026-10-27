@@ -15,6 +15,9 @@ from sqlalchemy.orm import validates
 # Importing them keeps one db connection for whole app
 from config import db, bcrypt
 
+# How many recipient colors the frontend palette has (RECIPIENT_COLORS in theme.js).
+# (**Keep these two in sync if colors are ever added**)
+COLOR_COUNT = 9
 
 # JOIN TABLE: recipient_interests
 # A plain table: each row links one recipient to one interest
@@ -92,6 +95,15 @@ class User(db.Model):
         """Used at login: True if the attempted password matches the stored hash"""
         return bcrypt.check_password_hash(self.password_hash, password)
 
+    def next_recipient_color(self):
+        """The color this user has used least (lowest number wins a tie),
+        so the first 9 recipients all get different colors, then they spread evenly."""
+        counts = [0] * COLOR_COUNT
+        for recipient in self.recipients:
+            if recipient.color is not None:     # skip an unsaved recipient with no color yet
+                counts[recipient.color] += 1
+        return counts.index(min(counts))
+
     def to_dict(self):
         """The only shape of a user ever sent to the frontend.
 
@@ -127,6 +139,10 @@ class Recipient(db.Model):
     # BUDGET:
     # optional - not every recipient needs a budget
     budget = db.Column(db.Numeric(10, 2))      # up to $99,999,999.99
+
+    # COLOR:
+    # a position in the frontend's RECIPIENT_COLORS list (0–8); used everywhere this person appears
+    color = db.Column(db.Integer, nullable=False, default=0, server_default="0")
 
     # CREATED AT:
     created_at = db.Column(db.DateTime, server_default=db.func.now())
@@ -186,6 +202,13 @@ class Recipient(db.Model):
             raise ValueError("Budget cannot be negative.")
         return budget
 
+    @validates("color")
+    def validate_color(self, key, color):
+        """Must be a whole number 0–8 (bool excluded, since Python treats True as 1)"""
+        if not isinstance(color, int) or isinstance(color, bool) or not 0 <= color < COLOR_COUNT:
+            raise ValueError(f"Color must be a number from 0 to {COLOR_COUNT - 1}.")
+        return color
+
     @property
     def spent(self):
         """Total price of purchased gifts: Calculated not stored,
@@ -208,6 +231,7 @@ class Recipient(db.Model):
             "notes": self.notes,
             # Decimal isn't valid JSON, so send it as a number:
             "budget": float(self.budget) if self.budget is not None else None,
+            "color": self.color,
             "spent": float(self.spent),
             "idea_count": self.idea_count,
             # Chips sorted alphabetically so they always appear in the same order
@@ -463,6 +487,7 @@ class Occasion(db.Model):
             "repeats_yearly": self.repeats_yearly,
             "recipient_id": self.recipient_id,
             "recipient_name": self.recipient.name if self.recipient else None,
+            "recipient_color": self.recipient.color if self.recipient else None,
             "next_date": self.next_date.isoformat(),
             "days_until": self.days_until,
             # unpurchased gifts planned for this occasion

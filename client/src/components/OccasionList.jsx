@@ -36,7 +36,7 @@ export default function OccasionList({
                 // The row's color: a passed-in color wins (recipient page); otherwise the
                 // recipient's own color (matches their dashboard card), or gold for holidays
                 const rowColor = color
-                    ?? (occasion.recipient_id ? recipientColor(occasion.recipient_id) : GOLD)
+                    ?? (occasion.recipient_id ? recipientColor(occasion.recipient_color) : GOLD)
                 const next = dayjs(occasion.next_date)
                 return (
                     <Box
@@ -90,17 +90,31 @@ export default function OccasionList({
                                 variant={soon ? 'filled' : 'outlined'}
                             />
 
-                            {/* ACTIONS (only when the page passes them in) */}
-                            {onEdit && (
-                                <IconButton size="small" aria-label={`Edit ${occasion.name}`} onClick={() => onEdit(occasion)}>
-                                    <EditOutlinedIcon fontSize="small" />
-                                </IconButton>
-                            )}
-                            {onDelete && (
-                                <IconButton size="small" aria-label={`Delete ${occasion.name}`} onClick={() => onDelete(occasion)}>
-                                    <DeleteOutlinedIcon fontSize="small" />
-                                </IconButton>
-                            )}
+                        {/* ACTIONS (only when the page passes them in) */}
+                        {onEdit && (
+                            <IconButton
+                                size="small"
+                                aria-label={`Edit ${occasion.name}`}
+                                onClick={(event) => {
+                                    event.currentTarget.blur()  // let the dialog take focus cleanly
+                                    onEdit(occasion)
+                                }}
+                            >
+                                <EditOutlinedIcon fontSize="small" />
+                            </IconButton>
+                        )}
+                        {onDelete && (
+                            <IconButton
+                                size="small"
+                                aria-label={`Delete ${occasion.name}`}
+                                onClick={(event) => {
+                                    event.currentTarget.blur()
+                                    onDelete(occasion)
+                                }}
+                            >
+                                <DeleteOutlinedIcon fontSize="small" />
+                            </IconButton>
+                        )}
                         </Box>
                     )
                 })}

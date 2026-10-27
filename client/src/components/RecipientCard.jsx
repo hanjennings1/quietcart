@@ -10,7 +10,7 @@ import { recipientColor } from '../theme.js'
 
 // recipient: one item from GET /api/recipients:
 function RecipientCard({ recipient }) {
-    const color = recipientColor(recipient.id)
+    const color = recipientColor(recipient.color)
 
     // "1 Idea" versus "2 Ideas"
     const ideaLabel = recipient.idea_count === 1 ? 'idea' : 'ideas'

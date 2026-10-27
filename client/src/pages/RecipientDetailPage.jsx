@@ -184,7 +184,7 @@ function RecipientDetailPage() {
     }
 
     // 3. LOADED
-    const color = recipientColor(recipient.id)
+    const color = recipientColor(recipient.color)
 
     // Occasions a gift for this person can go on: their own (birthday) plus holidays
     const giftOccasions = [...recipient.occasions, ...recipient.holidays]
