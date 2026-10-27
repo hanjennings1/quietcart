@@ -5,10 +5,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-    Alert, Box, Button, CircularProgress, InputAdornment, Paper, Stack, TextField, Typography,
+    Alert, Box, Button, ButtonBase, CircularProgress, InputAdornment, Paper, Stack, TextField, Typography,
 } from '@mui/material'
+import CheckIcon from '@mui/icons-material/Check'
 
 import { apiFetch } from '../api.js'
+import { NAVY, RECIPIENT_COLORS } from '../theme.js'
 
 function RecipientFormPage() {
 
@@ -17,8 +19,8 @@ function RecipientFormPage() {
     const isEditing = id !== undefined
     const navigate = useNavigate()
 
-    // all four fields in one state object
-    const [form, setForm] = useState({ name: '', relationship: '', budget: '', notes: '' })
+    // all the fields in one state object (color: a position in RECIPIENT_COLORS; null = not chosen yet)
+    const [form, setForm] = useState({ name: '', relationship: '', budget: '', notes: '', color: null })
 
     // edit mode starts by loading the recipient; create mode has nothing to load
     const [loading, setLoading] = useState(isEditing)
@@ -36,11 +38,28 @@ function RecipientFormPage() {
                     relationship: recipient.relationship ?? '', // ?? '' -> turns a missing (null) value into an empty field
                     budget: recipient.budget === null ? '' : String(recipient.budget),
                     notes: recipient.notes ?? '',
+                    color: recipient.color,
                 }),
             )
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false))
     }, [id, isEditing])
+
+
+    // ADD MODE: pre-select the color this user has used least (same rule as Flask's).
+    // If this fails, color stays null and Flask picks one when saving.
+    useEffect(() => {
+        if (isEditing) return
+
+        apiFetch('/recipients')
+            .then((recipients) => {
+                const counts = RECIPIENT_COLORS.map(() => 0)        // one counter per color
+                recipients.forEach((recipient) => { counts[recipient.color] += 1 })
+                const leastUsed = counts.indexOf(Math.min(...counts))
+                setForm((current) => ({ ...current, color: leastUsed }))
+            })
+            .catch(() => { })
+    }, [isEditing])
 
     // one change handler for every field:
     // each TextField has a "name" matching its key in the form object (so this updates the right one)
@@ -60,6 +79,7 @@ function RecipientFormPage() {
             // NOTE: an empty budget means "no budget" (unlimited) so it must be set as null, never as 0
             budget: form.budget.trim() === '' ? null : form.budget,
             notes: form.notes,
+            color: form.color,      // null → Flask picks the least-used color
         }
 
         try {
@@ -92,6 +112,7 @@ function RecipientFormPage() {
                 <Stack spacing={2}>
                     {error && <Alert severity="error">{error}</Alert>}
 
+                    {/* NAME */}
                     <TextField
                         label="Name"
                         name="name"
@@ -100,6 +121,8 @@ function RecipientFormPage() {
                         required
                         autoFocus   // cursor starts here, so typing can begin right away
                     />
+
+                    {/* RELATIONSHIP */}
                     <TextField
                         label="Relationship"
                         name="relationship"
@@ -107,6 +130,40 @@ function RecipientFormPage() {
                         onChange={handleChange}
                         placeholder="sister, coworker, best friend"
                     />
+
+                    {/* COLOR: pick one of the palette's swatches */}
+                    <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                            Color
+                        </Typography>
+                        {/* radiogroup/radio tell screen readers this is a "pick one" choice */}
+                        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }} role="radiogroup" aria-label="Color">
+                            {RECIPIENT_COLORS.map((hex, index) => {
+                                const selected = form.color === index
+                                return (
+                                    <ButtonBase
+                                        key={hex}
+                                        role="radio"
+                                        aria-checked={selected}
+                                        aria-label={`Color ${index + 1}`}
+                                        onClick={() => setForm((current) => ({ ...current, color: index }))}
+                                        sx={{
+                                            width: 36,
+                                            height: 36,
+                                            borderRadius: '50%',
+                                            bgcolor: hex,
+                                            // selected: a navy ring with a thin white gap, plus a check
+                                            boxShadow: selected ? `0 0 0 2px #FFFFFF, 0 0 0 4px ${NAVY}` : 'none',
+                                        }}
+                                    >
+                                        {selected && <CheckIcon sx={{ color: NAVY, fontSize: 20 }} />}
+                                    </ButtonBase>
+                                )
+                            })}
+                        </Stack>
+                    </Box>
+
+                    {/* BUDGET */}
                     <TextField
                         label="Budget"
                         name="budget"
@@ -119,6 +176,8 @@ function RecipientFormPage() {
                             htmlInput: { min: 0, step: '0.01' },   // no negatives; allows cents
                         }}
                     />
+
+                    {/* NOTES */}
                     <TextField
                         label="Notes"
                         name="notes"
