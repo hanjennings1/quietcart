@@ -139,6 +139,11 @@ def create_recipient():
     if data is None:
         return {"error": "Request body must be JSON."}, 400     # Bad Request
 
+    # COLOR: the form sends one; if it doesn't, pick the color this user has used least
+    color = data.get("color")
+    if color is None:
+        color = g.current_user.next_recipient_color()
+
     try:
         # Model validators run here (name required, budget not negative, etc.),
         # and raise ValueError with a readable message.
@@ -147,6 +152,7 @@ def create_recipient():
             relationship=data.get("relationship"),
             budget=data.get("budget"),
             notes=data.get("notes"),
+            color=color,
             user=g.current_user,      # SECURITY: owner comes from the session, not request body
         )
     except ValueError as err:
@@ -190,7 +196,7 @@ def get_recipient(recipient_id):
 
 # Fields a user may edit.
 # Anything else in the body is ignored
-RECIPIENT_FIELDS = ("name", "relationship", "budget", "notes")
+RECIPIENT_FIELDS = ("name", "relationship", "budget", "notes", "color")
 
 
 # EDIT A RECIPIENT  (can only edit fields listed above)
@@ -590,6 +596,7 @@ def dashboard():
         idea = gift.to_dict()
         # add the name so the page shows 'Pottery class · Emma":
         idea["recipient_name"] = gift.recipient.name
+        idea["recipient_color"] = gift.recipient.color
         recent_ideas.append(idea)
 
     # COMING UP:

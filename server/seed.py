@@ -62,7 +62,7 @@ def seed():
     # Adding to user.recipients sets each recipient's user automatically
     # (back_populates), so user_id never has to be set by hand.
     erin = Recipient(
-        name="Erin", relationship="sister", budget=50,
+        name="Erin", relationship="sister", budget=50, color=1,
         notes="Favorite colors: blue or rainbow. Loves the WNBA and NYC.",
     )
     erin_birthday = Occasion(
@@ -76,7 +76,7 @@ def seed():
     ])
 
     emma = Recipient(
-        name="Emma", relationship="sister", budget=60,
+        name="Emma", relationship="sister", budget=60, color=2,
         notes="Fairies, pink, cats, fun drinks.",
     )
     emma_birthday = Occasion(
@@ -92,7 +92,7 @@ def seed():
     ])
 
     cameron = Recipient(
-        name="Cameron", relationship="friend",  # no budget on purpose
+        name="Cameron", relationship="friend", color=7,  # no budget on purpose
         notes="Star Wars, pizza, Japan, travel, outdoors.",
     )
     cameron_birthday = Occasion(
@@ -135,7 +135,7 @@ def seed():
 
     # SAM'S RECIPIENTS:
     # A second account's data, used to test that users can't see each other's lists.
-    mom = Recipient(name="Mom", relationship="mother", budget=75)
+    mom = Recipient(name="Mom", relationship="mother", budget=75,color=0)
     mom.gifts.append(Gift(name="Gardening gloves", price=22))
     sam.recipients.append(mom)
     mom_birthday = Occasion(
