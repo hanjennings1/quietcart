@@ -5,24 +5,52 @@
 **Live demo:** https://quietcart-hi5t.onrender.com
 *(free hosting: the first visit after a quiet spell can take about a minute to wake up)*
 
-quietcart is a year-round gift planner. Save gift ideas the moment someone mentions them, set a budget for each person, tag them with interest chips, and check gifts off as you buy them. Every list is private to its owner's account.
+quietcart is a year-round gift planner. The best gift ideas come up in passing ("I'd love to try pottery someday"), then get lost by the time a birthday arrives. quietcart gives every person you shop for a private list: save ideas the moment they're mentioned, set a budget per person, tag them with interests, plan for birthdays and holidays with countdowns and a calendar, and check gifts off as you buy them. Every list is private to its owner's account.
 
-**Stack:** Flask · PostgreSQL · SQLAlchemy · React (Vite) · React Router · Material UI · session-based auth
+## Screenshots
+
+| Dashboard | Recipient page | Calendar |
+|---|---|---|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Recipient page](docs/screenshots/recipient.png) | ![Calendar](docs/screenshots/calendar.png) |
 
 ## Features
 
+**Accounts and privacy**
 - Sign up, log in, and stay logged in after a refresh (session cookies)
-- Add, edit, and delete recipients, the people you shop for
+- Every recipient, gift, interest, and occasion is private to its owner; another user's records return 404, so the app never confirms they exist
+
+**Recipients and gift ideas**
+- Add, edit, and delete recipients, each with their own color (9-color palette; the least-used color is suggested)
 - Save gift ideas with an optional link, price, and notes, from a recipient's page or the **+ Idea** button on any page
 - Check off purchased gifts (they move to the bottom, grayed out)
 - A budget per recipient with spent vs. budget; leave it blank for no limit, and spending over a budget shows in red
-- Interest chips (many-to-many): tag recipients, see everyone who shares an interest, and filter by shared interests
-- A dashboard with totals, each recipient's chips and unpurchased ideas, and recently saved ideas
-- Ownership rules: users can only ever reach their own data (other users' records return 404)
+- Search recipients by name, relationship, or interest
+
+**Interests (many-to-many)**
+- Tag recipients with interest chips; typing an existing label reuses it instead of creating a duplicate
+- See everyone who shares an interest, and filter by interests shared by 2+ recipients
+
+**Occasions and planning**
+- Birthdays (linked to one recipient) and holidays (for anyone), one-time or yearly
+- Countdowns ("In 6 days"), with gift ideas assigned to an occasion
+- A month calendar with each day's occasions; click a day to add one, or a label to edit it
+
+**Dashboard**
+- Totals, a **Coming up** list of the next 3 occasions, each recipient's chips and top ideas, and recently saved ideas
+
+## Tech stack
+
+| Layer | Tools |
+|---|---|
+| Backend | Python, Flask, Flask-SQLAlchemy, Flask-Migrate (Alembic), Flask-Bcrypt, Flask sessions, psycopg 3, gunicorn |
+| Database | PostgreSQL (Neon in production) |
+| Frontend | React (Vite), React Router, React Context, Material UI, dayjs |
+| Testing | pytest (52 tests), Postman, curl |
+| Deployment | Render (web service) + Neon (database) |
 
 ## Setup
 
-You'll need Python 3, Pipenv, Node.js, and PostgreSQL.
+You'll need Python 3.12, Pipenv, Node.js, and PostgreSQL.
 
 ### 1. Clone the repo
 
@@ -81,8 +109,8 @@ Open `http://localhost:5173`. Vite forwards `/api` requests to Flask, so both se
 
 | Username | Password | What's there |
 |---|---|---|
-| `hannah` | `giftsecret1` | 3 recipients with gifts, budgets, and interest chips |
-| `sam` | `giftsecret1` | 1 recipient, used to test that users can't see each other's data |
+| `hannah` | `giftsecret1` | 3 recipients with gifts, budgets, interests, birthdays, a housewarming, and Christmas |
+| `sam` | `giftsecret1` | 1 recipient with a birthday, used to test that users can't see each other's data |
 
 ### 5. Run the tests
 
@@ -91,7 +119,7 @@ cd server
 pipenv run pytest
 ```
 
-There are 32 tests covering authentication, ownership rules, and interest chips. They use `quietcart_test`, so your development data is never touched.
+52 tests cover authentication, ownership rules, interest chips, occasions, and recipient colors. They use `quietcart_test`, so your development data is never touched.
 
 ## API routes
 
@@ -103,46 +131,50 @@ All routes start with `/api` and return errors as `{"error": "message"}`. Every 
 | POST | `/api/login` | Log in |
 | DELETE | `/api/logout` | Log out |
 | GET | `/api/check_session` | Return the logged-in user |
-| GET | `/api/recipients` | List recipients with budget, spent, idea count, and interests |
-| POST | `/api/recipients` | Add a recipient |
-| GET | `/api/recipients/<id>` | One recipient with gifts, spending, and interests |
-| PATCH | `/api/recipients/<id>` | Update a recipient |
-| DELETE | `/api/recipients/<id>` | Delete a recipient and their gifts |
-| POST | `/api/gifts` | Save a gift idea |
-| PATCH | `/api/gifts/<id>` | Update a gift, including checking it off |
+| GET | `/api/recipients` | List recipients with budget, spent, color, idea count, and interests |
+| POST | `/api/recipients` | Add a recipient (the least-used color is picked if none is sent) |
+| GET | `/api/recipients/<id>` | One recipient with gifts, spending, interests, occasions, and holidays |
+| PATCH | `/api/recipients/<id>` | Update a recipient, including their color |
+| DELETE | `/api/recipients/<id>` | Delete a recipient with their gifts and occasions |
+| POST | `/api/gifts` | Save a gift idea (optionally for an occasion) |
+| PATCH | `/api/gifts/<id>` | Update a gift: check it off, or assign it to an occasion |
 | DELETE | `/api/gifts/<id>` | Delete a gift |
 | GET | `/api/interests` | List interest chips with how many recipients share each |
 | GET | `/api/interests/<id>` | One interest and everyone who shares it |
 | POST | `/api/recipients/<id>/interests` | Add an interest to a recipient (reuses an existing label) |
 | DELETE | `/api/recipients/<id>/interests/<interest_id>` | Remove an interest (deleted when no one has it) |
-| GET | `/api/dashboard` | Totals, each recipient's ideas and interests, recent ideas |
+| GET | `/api/occasions` | List occasions, soonest first, with countdowns |
+| POST | `/api/occasions` | Add a birthday (with `recipient_id`) or holiday (without) |
+| GET | `/api/occasions/<id>` | One occasion with its assigned gifts |
+| PATCH | `/api/occasions/<id>` | Update an occasion |
+| DELETE | `/api/occasions/<id>` | Delete an occasion (its gifts are kept, just unassigned) |
+| GET | `/api/dashboard` | Totals, each recipient's ideas, recent ideas, and upcoming occasions |
 
 ## Project structure
 
 ```
 quietcart/
 ├── server/
-│   ├── config.py       # app, database, and session settings
-│   ├── models.py       # User, Recipient, Gift, Interest + recipient_interests
-│   ├── auth.py         # signup, login, logout, check_session, @login_required
-│   ├── app.py          # recipient, gift, interest, and dashboard routes
-│   ├── seed.py         # sample data
-│   ├── migrations/     # Flask-Migrate (Alembic)
-│   └── tests/          # pytest
+│   ├── config.py         # app, database, session settings; serves the React build
+│   ├── models.py         # User, Recipient, Gift, Interest, Occasion + recipient_interests
+│   ├── auth.py           # signup, login, logout, check_session, @login_required
+│   ├── app.py            # recipient, gift, interest, occasion, and dashboard routes
+│   ├── seed.py           # sample data
+│   ├── requirements.txt  # for Render (generated from Pipfile.lock)
+│   ├── migrations/       # Flask-Migrate (Alembic)
+│   └── tests/            # pytest
 └── client/
     └── src/
-        ├── api.js      # apiFetch: one helper for every request
-        ├── theme.js    # MUI theme and recipient colors
-        ├── context/    # AuthContext (logged-in user)
-        ├── components/ # shared components (BudgetBar, GiftForm, InterestChips, ...)
-        └── pages/      # one file per route
+        ├── api.js        # apiFetch: one helper for every request
+        ├── theme.js      # MUI theme and the 9 recipient colors
+        ├── context/      # AuthContext (logged-in user)
+        ├── components/   # AppLayout, BudgetBar, GiftForm, InterestChips, MonthGrid, OccasionDialog, ...
+        └── pages/        # one file per route
 ```
 
 ## Deployment
 
-quietcart runs on **Render** (web service) with a **Neon** PostgreSQL database.
-In production, Flask serves the built React app, so the site and API share one
-domain (required for the session cookie).
+quietcart runs on **Render** (web service) with a **Neon** PostgreSQL database. In production, Flask serves the built React app, so the site and API share one domain (required for the session cookie).
 
 - **Build command:** `pip install -r server/requirements.txt && npm install --prefix client && npm run build --prefix client && cd server && flask db upgrade`
 - **Start command:** `gunicorn --chdir server app:app`
@@ -155,17 +187,19 @@ cd server
 pipenv requirements > requirements.txt
 ```
 
-## Known bugs and limitations
+## Known limitations
 
-- Recipient colors repeat after six recipients (colors are assigned by id).
-- Interest chips are displayed in lowercase (labels are lowercased so "Cats" and "cats" count as the same chip).
-- The browser console shows suggestions about form fields missing `id`/`name`/`autocomplete` attributes.
-- The tagline wraps onto two lines on the login card at some screen sizes.
-- The Recipients filter row shows only interests shared by 2+ recipients; a "show all" option is planned if the row gets long.
+- Interest chips display in lowercase (labels are lowercased so "Cats" and "cats" count as the same chip).
+- A yearly occasion on Feb 29 doesn't appear on the calendar grid in non-leap years (its countdown treats it as Feb 28).
+- The Recipients page only shows interests shared by 2+ recipients in its filter row.
+- Deleting a recipient also deletes their gift history.
+- Budgets and prices are in USD only.
+- On the free hosting plan, the first visit after 15 idle minutes takes about a minute to load.
 
 ## Future ideas
 
 - Gift history with a "given before" warning, and archiving recipients instead of deleting them
 - Rule-based dates for moving holidays (like Mother's Day)
 - Account settings (change password, delete account)
+- Occasions listed beside the calendar instead of below it
 - A seasonal Winter theme toggle
