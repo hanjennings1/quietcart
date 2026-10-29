@@ -133,11 +133,13 @@ function RecipientDetailPage() {
 
     // Open the occasion pop-up empty (add) or filled in (edit)
     function openAddOccasion() {
+        document.activeElement?.blur()      // let the dialog take focus cleanly
         setEditingOccasion(null)
         setOccasionDialogOpen(true)
     }
 
     function openEditOccasion(occasion) {
+        document.activeElement?.blur()      // let the dialog take focus cleanly
         setEditingOccasion(occasion)
         setOccasionDialogOpen(true)
     }
@@ -223,7 +225,10 @@ function RecipientDetailPage() {
                                 variant="outlined"
                                 color="error"
                                 startIcon={<DeleteOutlinedIcon />}
-                                onClick={() => setConfirmOpen(true)}
+                                onClick={() => {
+                                    document.activeElement?.blur()
+                                    setConfirmOpen(true)
+                                }}
                             >
                                 Delete
                             </Button>

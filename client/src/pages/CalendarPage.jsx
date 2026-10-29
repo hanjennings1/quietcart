@@ -58,12 +58,14 @@ function CalendarPage() {
 
     // Add from the header button (no date) or by clicking a day (that date prefilled)
     function openAdd(day = null) {
+        document.activeElement?.blur()      // let the dialog take focus cleanly
         setEditingOccasion(null)
         setDefaultDate(day ? day.format('YYYY-MM-DD') : null)
         setDialogOpen(true)
     }
 
     function openEdit(occasion) {
+        document.activeElement?.blur()      // let the dialog take focus cleanly
         setEditingOccasion(occasion)
         setDialogOpen(true)
     }

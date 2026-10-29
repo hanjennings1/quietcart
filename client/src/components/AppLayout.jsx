@@ -84,7 +84,10 @@ function AppLayout() {
                     variant="contained"
                     color="secondary"       // gold
                     startIcon={<AddIcon />}
-                    onClick={() => setQuickAddOpen(true)}
+                    onClick={() => {
+                        document.activeElement?.blur()   // let the dialog take focus cleanly
+                        setQuickAddOpen(true)
+                    }}
                     sx={{ mb: 3 }}
                 >
                     Idea
