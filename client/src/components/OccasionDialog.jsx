@@ -16,9 +16,10 @@
 import { useState } from 'react'
 import {
     Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle,
-    FormControlLabel, MenuItem, Stack, TextField,
+    FormControlLabel, MenuItem, Stack, TextField, ToggleButton, ToggleButtonGroup,
 } from '@mui/material'
 import { apiFetch } from '../api.js'
+import { MONTH_NAMES, WEEK_OPTIONS, WEEKDAY_NAMES, isMoving } from '../utils/rules.js'
 
 
 export default function OccasionDialog({
@@ -47,6 +48,10 @@ function OccasionForm({ occasion, recipientId, recipients, defaultDate, onClose,
         date: occasion?.date ?? defaultDate ?? '',                      // editing → its date; clicked a day → that day
         repeats_yearly: occasion?.repeats_yearly ?? true,               // default since most do repeat yearly
         recipient_id: occasion?.recipient_id ?? recipientId ?? '',      // no recipient = holiday (like Christmas)
+        moving: occasion ? isMoving(occasion) : false,                  // editing → its type; new → a fixed date
+        rule_week: occasion?.rule_week ?? 1,                            // defaults: "1st Sunday of January"
+        rule_weekday: occasion?.rule_weekday ?? 0,
+        rule_month: occasion?.rule_month ?? 1,
     })
     const [error, setError] = useState('')
     const [saving, setSaving] = useState(false)
@@ -60,8 +65,16 @@ function OccasionForm({ occasion, recipientId, recipients, defaultDate, onClose,
         event.preventDefault()
         setSaving(true)
         setError('')
-        // the dropdown uses '' for no one; Flask expects null:
-        const body = { ...form, recipient_id: form.recipient_id === '' ? null : form.recipient_id }
+        // Send a date OR a rule, and clear the other, so switching between them works
+        const body = {
+            name: form.name,
+            repeats_yearly: form.repeats_yearly,
+            recipient_id: form.recipient_id === '' ? null : form.recipient_id,  // '' = no one; Flask expects null
+            date: form.moving ? null : form.date,
+            rule_week: form.moving ? form.rule_week : null,
+            rule_weekday: form.moving ? form.rule_weekday : null,
+            rule_month: form.moving ? form.rule_month : null,
+        }
         try {
             const saved = await apiFetch(isEdit ? `/occasions/${occasion.id}` : '/occasions', {
                 method: isEdit ? 'PATCH' : 'POST',
@@ -93,16 +106,53 @@ function OccasionForm({ occasion, recipientId, recipients, defaultDate, onClose,
                         slotProps={{ htmlInput: { maxLength: 50 } }}
                     />
 
-                    {/* type="date" gives a built-in date picker and a "YYYY-MM-DD" value */}
-                    <TextField
-                        label="Date"
-                        name="date"
-                        type="date"
-                        value={form.date}
-                        onChange={handleChange}
-                        required
-                        slotProps={{ inputLabel: { shrink: true } }}   // keeps the label above the date
-                    />
+                    {/* Fixed date, or a moving rule like "3rd Sunday of June" */}
+                    <ToggleButtonGroup
+                        exclusive
+                        fullWidth
+                        size="small"
+                        value={form.moving ? 'moving' : 'fixed'}
+                        // value is null when the already-selected button is clicked, so ignore that
+                        onChange={(event, value) => value && setForm({ ...form, moving: value === 'moving' })}
+                    >
+                        <ToggleButton value="fixed">Date</ToggleButton>
+                        <ToggleButton value="moving">Moving date</ToggleButton>
+                    </ToggleButtonGroup>
+
+                    {form.moving ? (
+                        // reads like a sentence: [3rd] [Sunday] of [June]
+                        <Stack direction="row" spacing={1}>
+                            <TextField select label="Week" name="rule_week" value={form.rule_week}
+                                onChange={handleChange} sx={{ flex: 1 }}>
+                                {WEEK_OPTIONS.map((option) => (
+                                    <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                                ))}
+                            </TextField>
+                            <TextField select label="Day" name="rule_weekday" value={form.rule_weekday}
+                                onChange={handleChange} sx={{ flex: 1.5 }}>
+                                {WEEKDAY_NAMES.map((dayName, index) => (
+                                    <MenuItem key={dayName} value={index}>{dayName}</MenuItem>
+                                ))}
+                            </TextField>
+                            <TextField select label="Month" name="rule_month" value={form.rule_month}
+                                onChange={handleChange} sx={{ flex: 1.5 }}>
+                                {MONTH_NAMES.map((monthName, index) => (
+                                    <MenuItem key={monthName} value={index + 1}>{monthName}</MenuItem>
+                                ))}
+                            </TextField>
+                        </Stack>
+                    ) : (
+                        // type="date" gives a built-in date picker and a "YYYY-MM-DD" value
+                        <TextField
+                            label="Date"
+                            name="date"
+                            type="date"
+                            value={form.date}
+                            onChange={handleChange}
+                            required
+                            slotProps={{ inputLabel: { shrink: true } }}   // keeps the label above the date
+                        />
+                    )}
 
                     {/* Only on the Calendar page: choose who it's for, or no one */}
                     {recipients && (
@@ -120,15 +170,18 @@ function OccasionForm({ occasion, recipientId, recipients, defaultDate, onClose,
                         </TextField>
                     )}
 
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                checked={form.repeats_yearly}
-                                onChange={(event) => setForm({ ...form, repeats_yearly: event.target.checked })}
-                            />
-                        }
-                        label="Repeats every year"
-                    />
+                    {/* Moving dates always repeat, so only fixed dates need the choice */}
+                    {!form.moving && (
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={form.repeats_yearly}
+                                    onChange={(event) => setForm({ ...form, repeats_yearly: event.target.checked })}
+                                />
+                            }
+                            label="Repeats every year"
+                        />
+                    )}
                 </Stack>
             </DialogContent>
 
