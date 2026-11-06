@@ -18,11 +18,11 @@ import { GOLD, NAVY, recipientColor } from '../theme.js'
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 // Does this occasion land on this exact day?
-// Yearly: same month and day, any year. One-time: the exact date.
+// Yearly: moved into this day's year (Feb 29 becomes Feb 28 in non-leap years). One-time: the exact date.
 function occursOn(occasion, day) {
     const date = dayjs(occasion.date)
     if (occasion.repeats_yearly) {
-        return date.month() === day.month() && date.date() === day.date()
+        return date.year(day.year()).isSame(day, 'day')  // dayjs keeps Feb 29 → Feb 28, like the backend
     }
     return date.isSame(day, 'day')
 }
