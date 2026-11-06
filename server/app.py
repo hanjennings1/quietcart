@@ -466,10 +466,15 @@ def create_occasion():
             name=data.get("name"),
             date=data.get("date"),
             repeats_yearly=data.get("repeats_yearly", False),
+            rule_month=data.get("rule_month"),
+            rule_weekday=data.get("rule_weekday"),
+            rule_week=data.get("rule_week"),
             recipient=recipient,
             user=g.current_user,        # SECURITY: owner from the session; set last, after validation
         )
+        occasion.check_schedule()       # needs a date OR a full rule (checks fields together)
     except ValueError as err:
+        db.session.rollback()           # user= already attached it to the session, so undo that
         return {"error": str(err)}, 400     # Bad Request
 
     db.session.add(occasion)
@@ -497,8 +502,7 @@ def get_occasion(occasion_id):
 
 
 # Fields a user may edit directly (recipient_id is checked separately below)
-OCCASION_FIELDS = ("name", "date", "repeats_yearly")
-
+OCCASION_FIELDS = ("name", "date", "repeats_yearly", "rule_month", "rule_weekday", "rule_week")
 
 # EDIT AN OCCASION
 @app.patch("/api/occasions/<int:occasion_id>")
@@ -524,8 +528,9 @@ def update_occasion(occasion_id):
         for field in OCCASION_FIELDS:
             if field in data:
                 setattr(occasion, field, data[field])
+        occasion.check_schedule()       # after all fields change, so date→rule switches work
     except ValueError as err:
-        db.session.rollback()       # undo every change in this request, including the recipient
+        db.session.rollback()           # undo every change in this request, including the recipient
         return {"error": str(err)}, 400     # Bad Request
 
     db.session.commit()
