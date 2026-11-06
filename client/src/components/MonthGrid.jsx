@@ -14,12 +14,17 @@ import { Box, ButtonBase } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 
 import { GOLD, NAVY, recipientColor } from '../theme.js'
+import { isMoving, ruleDate } from '../utils/rules.js'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 // Does this occasion land on this exact day?
-// Yearly: moved into this day's year (Feb 29 becomes Feb 28 in non-leap years). One-time: the exact date.
+// Moving: its rule worked out for this day's year. Yearly: moved into this day's year
+// (Feb 29 becomes Feb 28 in non-leap years). One-time: the exact date.
 function occursOn(occasion, day) {
+    if (isMoving(occasion)) {
+        return ruleDate(occasion, day.year()).isSame(day, 'day')
+    }
     const date = dayjs(occasion.date)
     if (occasion.repeats_yearly) {
         return date.year(day.year()).isSame(day, 'day')  // dayjs keeps Feb 29 → Feb 28, like the backend
