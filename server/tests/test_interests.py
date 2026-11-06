@@ -2,7 +2,7 @@
 Interest chip tests: how chips are added, shared, and removed, and
 proof that one user can never see or change another user's chips.
 
-Setup for every test: hannah owns Emma (cats, travel) and Cameron
+Setup for every test: hannah owns Emma (cats, travel) and Connor
 (travel), so "travel" is shared. Sam owns Mom, plus his own "cats" chip,
 since two users can each have the same label.
 """
@@ -22,19 +22,19 @@ def chips_data(create_user):
     cats = Interest(label="cats", user=hannah)
     travel = Interest(label="travel", user=hannah)
     emma = Recipient(name="Emma", user=hannah)
-    cameron = Recipient(name="Cameron", user=hannah)
+    Connor = Recipient(name="Connor", user=hannah)
     emma.interests.extend([cats, travel])
-    cameron.interests.append(travel)       # "travel" is shared
+    Connor.interests.append(travel)       # "travel" is shared
 
     sam_cats = Interest(label="cats", user=sam)
     mom = Recipient(name="Mom", user=sam)
     mom.interests.append(sam_cats)
 
-    db.session.add_all([emma, cameron, mom])
+    db.session.add_all([emma, Connor, mom])
     db.session.commit()
     return {
         "cats_id": cats.id, "travel_id": travel.id, "sam_cats_id": sam_cats.id,
-        "emma_id": emma.id, "cameron_id": cameron.id, "mom_id": mom.id,
+        "emma_id": emma.id, "Connor_id": Connor.id, "mom_id": mom.id,
     }
 
 
@@ -44,7 +44,7 @@ def test_add_chip_cleans_label_and_reuses_existing(client, login_as, chips_data)
     """" CATS " should become "cats" and reuse hannah's chip, not make a duplicate."""
     login_as("hannah")
     response = client.post(
-        f"/api/recipients/{chips_data['cameron_id']}/interests", json={"label": " CATS "}
+        f"/api/recipients/{chips_data['Connor_id']}/interests", json={"label": " CATS "}
     )
 
     assert response.status_code == 201
@@ -104,7 +104,7 @@ def test_removing_shared_chip_keeps_it_for_others(client, login_as, chips_data):
 
     assert response.status_code == 204
     travel = db.session.get(Interest, chips_data["travel_id"])
-    assert [r.name for r in travel.recipients] == ["Cameron"]
+    assert [r.name for r in travel.recipients] == ["Connor"]
 
 
 # ─── THE FILTER ───────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ def test_interest_lists_everyone_who_shares_it(client, login_as, chips_data):
     login_as("hannah")
     data = client.get(f"/api/interests/{chips_data['travel_id']}").get_json()
 
-    assert [r["name"] for r in data["recipients"]] == ["Cameron", "Emma"]
+    assert [r["name"] for r in data["recipients"]] == ["Connor", "Emma"]
 
 
 # ─── OWNERSHIP ────────────────────────────────────────────────────────
