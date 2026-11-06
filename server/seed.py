@@ -57,10 +57,22 @@ def seed():
         name="Christmas", date=date(2026, 12, 25), repeats_yearly=True, user=hannah
     )
 
+    # MOVING HOLIDAYS: a rule instead of a date (weekday: Sunday = 0)
+    mothers_day = Occasion(
+        name="Mother's Day", rule_week=2, rule_weekday=0, rule_month=5,   # 2nd Sunday of May
+        repeats_yearly=True, user=hannah,
+    )
+    fathers_day = Occasion(
+        name="Father's Day", rule_week=3, rule_weekday=0, rule_month=6,   # 3rd Sunday of June
+        repeats_yearly=True, user=hannah,
+    )
+
+
     print("Creating recipients and gifts...")
     # HANNAH'S RECIPIENTS:
     # Adding to user.recipients sets each recipient's user automatically
     # (back_populates), so user_id never has to be set by hand.
+# ERIN
     erin = Recipient(
         name="Erin", relationship="sister", budget=50, color=1,
         notes="Favorite colors: blue or rainbow. Loves the WNBA and NYC.",
@@ -75,6 +87,7 @@ def seed():
         Gift(name="Cooperative board game", price=30),
     ])
 
+# EMMA
     emma = Recipient(
         name="Emma", relationship="sister", budget=60, color=2,
         notes="Fairies, pink, cats, fun drinks.",
@@ -91,46 +104,54 @@ def seed():
         Gift(name="Pottery class", notes="She mentioned it in passing!"),
     ])
 
-    cameron = Recipient(
-        name="Cameron", relationship="friend", color=7,  # no budget on purpose
-        notes="Star Wars, pizza, Japan, travel, outdoors.",
+# CONNOR
+    connor = Recipient(
+        name="Connor", relationship="brother", color=7,  # no budget on purpose
+        notes="Cycling, skiing, snowboarding, travel.",
     )
-    cameron_birthday = Occasion(
-        name="Cameron's birthday", date=date(1997, 4, 29), repeats_yearly=True,
-        user=hannah, recipient=cameron,
+    connor_birthday = Occasion(
+        name="Connor's birthday", date=date(1997, 7, 28), repeats_yearly=True,
+        user=hannah, recipient=connor,
     )
     # One-time occasion: shows how non-repeating dates work
     housewarming = Occasion(
-        name="Cameron's housewarming", date=date(2026, 11, 1), repeats_yearly=False,
-        user=hannah, recipient=cameron,
+        name="Connor's housewarming", date=date(2026, 11, 1), repeats_yearly=False,
+        user=hannah, recipient=connor,
     )
-    cameron.gifts.append(Gift(name="Lego X-wing", price=49.99, occasion=christmas))
+    connor.gifts.extend([
+        Gift(name="Drinks for Holiday Party", price=13,
+             notes="Saturday before Christmas", occasion=christmas),
+        Gift(name="Book", price=20),
+        Gift(name="Ski goggles", price=20, purchased=True),
+        Gift(name="Gift card to local bike shop", purchased=True),
+    ])
 
-    hannah.recipients.extend([erin, emma, cameron])
+    hannah.recipients.extend([erin, emma, connor])
 
     print("Creating interests...")
     # HANNAH'S INTERESTS:
     # Each chip is created once, then shared. "travel" goes on both
-    # Emma and Cameron, so the "who shares this interest?" filter has data.
+    # Emma and Connor, so the "who shares this interest?" filter has data.
     board_games = Interest(label="board games")
     basketball = Interest(label="basketball")
     nyc = Interest(label="nyc")
     cats = Interest(label="cats")
     whimsical = Interest(label="whimsical")
     crafts = Interest(label="crafts")
-    star_wars = Interest(label="star wars")
     travel = Interest(label="travel")
-    video_games = Interest(label="video games")
+    cycling = Interest(label="cycling")
+    skiing = Interest(label="skiing")
+    snowboarding = Interest(label="snowboarding")
 
     # Adding to user.interests sets each chip's user (back_populates)
     hannah.interests.extend(
-        [board_games, basketball, nyc, cats, whimsical, crafts, star_wars, travel, video_games]
+        [board_games, basketball, nyc, cats, whimsical, crafts, travel, cycling, skiing, snowboarding]
     )
 
     # Appending to recipient.interests creates the link rows in recipient_interests
     erin.interests.extend([basketball, nyc, board_games])
     emma.interests.extend([cats, whimsical, crafts, travel])
-    cameron.interests.extend([star_wars, travel, video_games])
+    connor.interests.extend([cycling, skiing, snowboarding, travel])
 
 
     # SAM'S RECIPIENTS:
