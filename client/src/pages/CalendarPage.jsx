@@ -14,14 +14,20 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import OccasionDialog from '../components/OccasionDialog.jsx'
 import OccasionList from '../components/OccasionList.jsx'
 import MonthGrid from '../components/MonthGrid.jsx'
+import { isMoving, ruleDate } from '../utils/rules.js'
 
+
+// This occasion's date in a given year (a dayjs date):
+// moving → its rule; yearly → same month and day that year; one-time → its exact date
+function dateInYear(occasion, year) {
+    if (isMoving(occasion)) return ruleDate(occasion, year)
+    const date = dayjs(occasion.date)
+    return occasion.repeats_yearly ? date.year(year) : date
+}
 
 // Does this occasion happen in the given month (a dayjs date)?
-// Yearly occasions happen every year in their month; one-timers only in their exact month
 function occursInMonth(occasion, month) {
-    const date = dayjs(occasion.date)
-    if (occasion.repeats_yearly) return date.month() === month.month()
-    return date.isSame(month, 'month')      // same month AND same year
+    return dateInYear(occasion, month.year()).isSame(month, 'month')     // same month AND year
 }
 
 function CalendarPage() {
@@ -106,7 +112,7 @@ function CalendarPage() {
     // 3. LOADED: this month's occasions, in day order
     const monthOccasions = occasions
         .filter((occasion) => occursInMonth(occasion, month))
-        .sort((a, b) => dayjs(a.date).date() - dayjs(b.date).date())
+        .sort((a, b) => dateInYear(a, month.year()).date() - dateInYear(b, month.year()).date())
 
     return (
         <Box>

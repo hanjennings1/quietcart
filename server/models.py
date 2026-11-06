@@ -6,7 +6,8 @@ a user owns their recipients, and gifts belong to a user through
 their recipient. Routes rely on this chain for ownership checks.
 """
 
-from datetime import date, datetime
+from calendar import monthrange          # days in a month, for "last Monday of May"
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.orm import validates
@@ -413,9 +414,16 @@ class Occasion(db.Model):
     )
 
     # DETAILS:
-    name = db.Column(db.String(50), nullable=False)      # "Cameron's Birthday", "Christmas", "Baby Shower"
-    date = db.Column(db.Date, nullable=False)            # First time setting date including year
+    name = db.Column(db.String(50), nullable=False)      # "Emmy's Birthday", "Christmas", "Baby Shower"
+    date = db.Column(db.Date)       # First time setting date including year; empty for moving occasions
     repeats_yearly = db.Column(db.Boolean, nullable=False, default=False)
+
+    # MOVING DATE RULE (optional):
+    # "the third Sunday of June" = rule_week 3, rule_weekday 0, rule_month 6
+    # an occasion has either a date OR all three of these, never both
+    rule_month = db.Column(db.Integer)       # 1–12 (January = 1)
+    rule_weekday = db.Column(db.Integer)     # 0–6 (Sunday = 0, matching the calendar)
+    rule_week = db.Column(db.Integer)        # 1–4, or -1 for "last"
 
     # CREATED_AT:
     created_at = db.Column(db.DateTime, server_default=db.func.now())
@@ -437,6 +445,8 @@ class Occasion(db.Model):
     @validates("date")
     def validate_date(self, key, value):
         """ Accepts a date or a YYYY-MM-DD string from JSON """
+        if value is None or value == "":
+            return None      # moving occasions have no fixed date
         if isinstance(value, date):
             return value
         try:
@@ -451,6 +461,39 @@ class Occasion(db.Model):
             raise ValueError("repeats_yearly must be true or false.")
         return value
 
+    @validates("rule_month", "rule_weekday", "rule_week")
+    def validate_rule(self, key, value):
+        """ Each rule part is optional; when set, it must be a whole number in range """
+        if value is None or value == "":
+            return None
+        allowed = {
+            "rule_month": range(1, 13),      # 1–12
+            "rule_weekday": range(0, 7),     # 0–6, Sunday = 0
+            "rule_week": (1, 2, 3, 4, -1),   # -1 = last
+        }[key]
+        # bool excluded, since Python treats True as 1
+        if not isinstance(value, int) or isinstance(value, bool) or value not in allowed:
+            raise ValueError(f"{key} is out of range.")
+        return value
+
+    @property
+    def is_moving(self):
+        """ True when this occasion uses a rule ("3rd Sunday of June") instead of a date """
+        return self.rule_month is not None
+
+    def check_schedule(self):
+        """ Called by the routes before saving: needs a date OR a full rule, never both """
+        rule = [self.rule_month, self.rule_weekday, self.rule_week]
+        has_rule = all(part is not None for part in rule)
+        if any(part is not None for part in rule) and not has_rule:
+            raise ValueError("A moving date needs a week, a weekday, and a month.")
+        if has_rule and self.date is not None:
+            raise ValueError("Choose either a date or a moving date, not both.")
+        if not has_rule and self.date is None:
+            raise ValueError("Date is required.")
+        if has_rule:
+            self.repeats_yearly = True       # moving dates always repeat
+
     @property
     def next_date(self):
         """ The next time this occasion happens; yearly occasions roll forward to this year (or next year if this year's has passed)
@@ -464,12 +507,27 @@ class Occasion(db.Model):
         return upcoming
 
     def _in_year(self, year):
-        """ This occasions month and day in another year
-        (Feb 29th -> Feb 28th in non-leap years)"""
+        """ This occasion's date in a given year: moving occasions follow their rule;
+        fixed ones keep their month and day (Feb 29th -> Feb 28th in non-leap years) """
+        if self.is_moving:
+            return self._rule_date(year)
         try:
             return self.date.replace(year=year)
         except ValueError:
             return self.date.replace(year=year, day=28)
+
+    def _rule_date(self, year):
+        """ A rule's date in a given year, like "3rd Sunday of June 2027".
+        isoweekday() % 7 turns Python's Mon=1…Sun=7 into our Sun=0…Sat=6 """
+        if self.rule_week == -1:
+            # "last": start at the month's final day and step back to the weekday
+            last_day = date(year, self.rule_month, monthrange(year, self.rule_month)[1])
+            days_back = (last_day.isoweekday() % 7 - self.rule_weekday) % 7
+            return last_day - timedelta(days=days_back)
+        # "nth": find the first matching weekday, then add whole weeks
+        first_day = date(year, self.rule_month, 1)
+        days_ahead = (self.rule_weekday - first_day.isoweekday() % 7) % 7
+        return first_day + timedelta(days=days_ahead + 7 * (self.rule_week - 1))
 
     @property
     def days_until(self):
@@ -483,8 +541,11 @@ class Occasion(db.Model):
         return {
             "id": self.id,
             "name": self.name,
-            "date": self.date.isoformat(),
+            "date": self.date.isoformat() if self.date else None,
             "repeats_yearly": self.repeats_yearly,
+            "rule_month": self.rule_month,
+            "rule_weekday": self.rule_weekday,
+            "rule_week": self.rule_week,
             "recipient_id": self.recipient_id,
             "recipient_name": self.recipient.name if self.recipient else None,
             "recipient_color": self.recipient.color if self.recipient else None,
