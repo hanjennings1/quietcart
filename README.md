@@ -39,6 +39,9 @@ quietcart is a year-round gift planner. The best gift ideas come up in passing (
 **Dashboard**
 - Totals, a **Coming up** list of the next 3 occasions, each recipient's chips and top ideas, and recently saved ideas
 
+**Themes**
+- A Winter theme toggle in the sidebar: cool blues in place of navy and gold, with recipient colors unchanged; the choice is saved in your browser
+
 ## Tech stack
 
 | Layer | Tools |
@@ -167,9 +170,10 @@ quietcart/
 └── client/
     └── src/
         ├── api.js        # apiFetch: one helper for every request
-        ├── theme.js      # MUI theme and the 9 recipient colors
-        ├── context/      # AuthContext (logged-in user)
+        ├── theme.js      # MUI themes (regular and winter) and the 9 recipient colors
+        ├── context/      # AuthContext (logged-in user), ThemeModeContext (regular or winter theme)
         ├── components/   # AppLayout, BudgetBar, GiftForm, InterestChips, MonthGrid, OccasionDialog, ...
+        ├── utils/        # format.js (dates, countdowns), rules.js (moving holiday dates)
         └── pages/        # one file per route
 ```
 
@@ -194,10 +198,11 @@ pipenv requirements > requirements.txt
 - Deleting a recipient also deletes their gift history.
 - Budgets and prices are in USD only.
 - On the free hosting plan, the first visit after 15 idle minutes takes about a minute to load.
+- The theme choice is saved per browser, so it doesn't follow you to another device.
 
 ## Future ideas
 
 - Gift history with a "given before" warning, and archiving recipients instead of deleting them
 - Account settings (change password, delete account)
 - Occasions listed beside the calendar instead of below it
-- A seasonal Winter theme toggle
+- A dark theme, and saving the theme choice to the account
