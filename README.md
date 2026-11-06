@@ -190,7 +190,6 @@ pipenv requirements > requirements.txt
 ## Known limitations
 
 - Interest chips display in lowercase (labels are lowercased so "Cats" and "cats" count as the same chip).
-- A yearly occasion on Feb 29 doesn't appear on the calendar grid in non-leap years (its countdown treats it as Feb 28).
 - The Recipients page only shows interests shared by 2+ recipients in its filter row.
 - Deleting a recipient also deletes their gift history.
 - Budgets and prices are in USD only.
