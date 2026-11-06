@@ -190,3 +190,77 @@ def test_dashboard_shows_upcoming_occasions_soonest_first(client, login_as, occa
     upcoming = client.get("/api/dashboard").get_json()["upcoming"]
 
     assert [o["name"] for o in upcoming] == ["Emma's party", "Holiday", "Erin's birthday"]
+
+
+# ── MOVING DATES ──────────────────────────────────────────────────────────
+
+# Known dates, so these never go stale: (week, weekday, month, year, expected)
+# weekday: Sunday = 0 … Saturday = 6; week -1 = last
+@pytest.mark.parametrize("week, weekday, month, year, expected", [
+    (3, 0, 6, 2026, date(2026, 6, 21)),     # Father's Day: 3rd Sunday of June
+    (2, 0, 5, 2027, date(2027, 5, 9)),      # Mother's Day: 2nd Sunday of May
+    (4, 4, 11, 2026, date(2026, 11, 26)),   # Thanksgiving: 4th Thursday of November
+    (-1, 1, 5, 2026, date(2026, 5, 25)),    # Memorial Day: last Monday of May
+])
+def test_rule_works_out_the_right_date(week, weekday, month, year, expected):
+    occasion = Occasion(name="Test", rule_week=week, rule_weekday=weekday, rule_month=month)
+    assert occasion._in_year(year) == expected
+
+
+# The base rule for the API tests below: Father's Day
+FATHERS_DAY = {"name": "Father's Day", "rule_week": 3, "rule_weekday": 0, "rule_month": 6}
+
+
+def test_create_moving_occasion(client, login_as, occasions_data):
+    login_as("hannah")
+    response = client.post("/api/occasions", json=FATHERS_DAY)
+    body = response.get_json()
+
+    assert response.status_code == 201
+    assert body["date"] is None
+    assert body["repeats_yearly"] is True       # moving dates always repeat
+    # next_date depends on today, so check its shape: a Sunday, June 15–21
+    next_date = date.fromisoformat(body["next_date"])
+    assert next_date.month == 6 and next_date.isoweekday() == 7 and 15 <= next_date.day <= 21
+
+
+def test_incomplete_rule_is_rejected_and_not_saved(client, login_as, occasions_data):
+    login_as("hannah")
+    response = client.post("/api/occasions", json={**FATHERS_DAY, "rule_week": None})
+
+    assert response.status_code == 400
+    assert len(client.get("/api/occasions").get_json()) == 3     # still only the fixture's 3
+
+
+def test_date_and_rule_together_is_rejected(client, login_as, occasions_data):
+    login_as("hannah")
+    response = client.post("/api/occasions", json={**FATHERS_DAY, "date": "2026-06-21"})
+
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize("bad_part", [
+    {"rule_week": 5},       # no "5th" (use -1 for last)
+    {"rule_month": 13},
+    {"rule_weekday": 7},
+])
+def test_out_of_range_rule_is_rejected(client, login_as, occasions_data, bad_part):
+    login_as("hannah")
+    response = client.post("/api/occasions", json={**FATHERS_DAY, **bad_part})
+
+    assert response.status_code == 400
+
+
+def test_switch_fixed_date_to_moving(client, login_as, occasions_data):
+    login_as("hannah")
+    party_id = occasions_data["party_id"]
+    response = client.patch(
+        f"/api/occasions/{party_id}",
+        json={"date": None, "rule_week": 2, "rule_weekday": 0, "rule_month": 5},
+    )
+    body = response.get_json()
+
+    assert response.status_code == 200
+    assert body["date"] is None
+    assert body["rule_month"] == 5
+    assert body["repeats_yearly"] is True
