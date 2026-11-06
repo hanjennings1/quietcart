@@ -18,6 +18,7 @@ import dayjs from 'dayjs'
 
 import { GOLD, NAVY, recipientColor } from '../theme.js'
 import { formatCountdown } from '../utils/format.js'
+import { describeRule, isMoving } from '../utils/rules.js'
 
 // Occasions this close get a gold countdown chip (so they stand out):
 const SOON_DAYS = 14
@@ -49,8 +50,8 @@ export default function OccasionList({
                             py: 1,
                             borderRadius: 2,
                             bgcolor: alpha(rowColor, 0.1),
-                            }}
-                        >
+                        }}
+                    >
 
                         {/* DATE BADGE: a mini calendar page, e.g. "NOV" over a big "1" */}
                         <Box
@@ -72,23 +73,26 @@ export default function OccasionList({
                             </Typography>
                         </Box>
 
-                            {/* NAME + DETAILS (minWidth: 0 lets long names shrink instead of overflowing) */}
-                            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                                <Typography sx={{ fontWeight: 600 }}>{occasion.name}</Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    {showRecipient && occasion.recipient_name && `${occasion.recipient_name} · `}
-                                    {occasion.idea_count} {occasion.idea_count === 1 ? 'idea' : 'ideas'}
-                                    {occasion.repeats_yearly && ' · every year'}
-                                </Typography>
-                            </Box>
+                        {/* NAME + DETAILS (minWidth: 0 lets long names shrink instead of overflowing) */}
+                        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                            <Typography sx={{ fontWeight: 600 }}>{occasion.name}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {showRecipient && occasion.recipient_name && `${occasion.recipient_name} · `}
+                                {occasion.idea_count} {occasion.idea_count === 1 ? 'idea' : 'ideas'}
+                                {/* moving → "3rd Sunday of June"; fixed yearly → "every year" */}
+                                {isMoving(occasion)
+                                    ? ` · ${describeRule(occasion)}`
+                                    : occasion.repeats_yearly && ' · every year'}
+                            </Typography>
+                        </Box>
 
-                            {/* COUNTDOWN */}
-                            <Chip
-                                size="small"
-                                label={formatCountdown(occasion.days_until)}
-                                color={soon ? 'secondary' : 'default'}
-                                variant={soon ? 'filled' : 'outlined'}
-                            />
+                        {/* COUNTDOWN */}
+                        <Chip
+                            size="small"
+                            label={formatCountdown(occasion.days_until)}
+                            color={soon ? 'secondary' : 'default'}
+                            variant={soon ? 'filled' : 'outlined'}
+                        />
 
                         {/* ACTIONS (only when the page passes them in) */}
                         {onEdit && (
@@ -115,9 +119,9 @@ export default function OccasionList({
                                 <DeleteOutlinedIcon fontSize="small" />
                             </IconButton>
                         )}
-                        </Box>
-                    )
-                })}
-            </Stack >
-        )
-    }
+                    </Box>
+                )
+            })}
+        </Stack>
+    )
+}
