@@ -11,9 +11,9 @@
  */
 import dayjs from 'dayjs'
 import { Box, ButtonBase } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { alpha, useTheme } from '@mui/material/styles'
 
-import { GOLD, NAVY, recipientColor } from '../theme.js'
+import { recipientColor } from '../theme.js'
 import { isMoving, ruleDate } from '../utils/rules.js'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -33,12 +33,14 @@ function occursOn(occasion, day) {
 }
 
 // Same colors as everywhere else: the recipient's color, or gold for holidays
-function occasionColor(occasion) {
-    return occasion.recipient_id ? recipientColor(occasion.recipient_color) : GOLD
+function occasionColor(occasion, holidayColor) {
+    return occasion.recipient_id ? recipientColor(occasion.recipient_color) : holidayColor
 }
 
 export default function MonthGrid({ month, occasions, onOccasionClick, onDayClick }) {
     const today = dayjs()
+    const theme = useTheme()                                // the active theme (regular or winter)
+    const holidayColor = theme.palette.secondary.main       // gold, or winter sky
     const firstOfMonth = month.startOf('month')
 
     // The grid starts on the Sunday on or before the 1st, and runs whole weeks
@@ -95,10 +97,10 @@ export default function MonthGrid({ month, occasions, onOccasionClick, onDayClic
                             borderColor: 'divider',
                             bgcolor: inMonth ? 'background.paper' : 'action.hover',
                             cursor: inMonth ? 'pointer' : 'default',
-                            '&:hover': inMonth ? { bgcolor: alpha(NAVY, 0.03) } : {},
+                            '&:hover': inMonth ? { bgcolor: alpha(theme.palette.primary.main, 0.03) } : {},
                         }}
                     >
-                        {/* DAY NUMBER: a navy circle for today */}
+                        {/* DAY NUMBER: a colored circle for today */}
                         <Box
                             sx={{
                                 width: 28,
@@ -110,7 +112,7 @@ export default function MonthGrid({ month, occasions, onOccasionClick, onDayClic
                                 justifyContent: 'center',
                                 fontSize: 14,
                                 fontWeight: isToday ? 700 : 400,
-                                bgcolor: isToday ? NAVY : 'transparent',
+                                bgcolor: isToday ? 'primary.main' : 'transparent',
                                 color: isToday ? '#FFFFFF' : inMonth ? 'text.primary' : 'text.disabled',
                             }}
                         >
@@ -119,7 +121,7 @@ export default function MonthGrid({ month, occasions, onOccasionClick, onDayClic
 
                         {/* OCCASION LABELS */}
                         {dayOccasions.map((occasion) => {
-                            const color = occasionColor(occasion)
+                            const color = occasionColor(occasion, holidayColor)
                             return (
                                 <ButtonBase
                                     key={occasion.id}

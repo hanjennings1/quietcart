@@ -2,17 +2,19 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom'
 import {
-    Box, Button, List, ListItemButton, ListItemIcon, ListItemText, Snackbar, Typography,
+    Box, Button, FormControlLabel, List, ListItemButton, ListItemIcon, ListItemText,
+    Snackbar, Switch, Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined'
+import AcUnitIcon from '@mui/icons-material/AcUnit'   // snowflake
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 
 import QuickAddDialog from './QuickAddDialog.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { GOLD } from '../theme.js'
+import { useThemeMode } from '../context/ThemeModeContext.jsx'
 
 const SIDEBAR_WIDTH = 220
 
@@ -25,6 +27,7 @@ const NAV_LINKS = [
 
 function AppLayout() {
     const { user, logout } = useAuth()
+    const { winter, toggleWinter } = useThemeMode()
     const navigate = useNavigate()
 
     // On a recipient's page (/recipients/:id), this is their id.
@@ -79,10 +82,10 @@ function AppLayout() {
                     quietcart
                 </Typography>
 
-                {/* QUICK ADD: gold so it stands out, at the top so it's always in the same spot on every page */}
+                {/* QUICK ADD: the accent color so it stands out, at the top so it's always in the same spot on every page */}
                 <Button
                     variant="contained"
-                    color="secondary"       // gold
+                    color="secondary"       // gold, or frost in winter
                     startIcon={<AddIcon />}
                     onClick={() => {
                         document.activeElement?.blur()   // let the dialog take focus cleanly
@@ -109,11 +112,12 @@ function AppLayout() {
                                 borderRadius: 2,
                                 mb: 0.5,
                                 color: 'rgba(255, 255, 255, 0.75)',
-                                // The current page: white text and a gold marker
+                                // The current page: white text and an accent-colored marker
                                 '&.active': {
                                     color: '#FFFFFF',
                                     bgcolor: 'rgba(255, 255, 255, 0.08)',
-                                    borderLeft: `4px solid ${GOLD}`,
+                                    // (theme) => …  lets sx read the active theme's colors
+                                    borderLeft: (theme) => `4px solid ${theme.palette.secondary.main}`,
                                 },
                             }}
                         >
@@ -122,6 +126,17 @@ function AppLayout() {
                         </ListItemButton>
                     ))}
                 </List>
+
+                {/* WINTER THEME: saved in this browser */}
+                <FormControlLabel
+                    control={<Switch checked={winter} onChange={toggleWinter} color="secondary" size="small" />}
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                            <AcUnitIcon fontSize="small" /> Winter theme
+                        </Box>
+                    }
+                    sx={{ mx: 0, mb: 1, px: 1, '& .MuiFormControlLabel-label': { fontSize: 14 } }}
+                />
 
                 <Typography variant="body2" sx={{ px: 1, mb: 1, opacity: 0.75 }}>
                     Signed in as {user.username}
