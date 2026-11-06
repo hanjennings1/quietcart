@@ -7,6 +7,9 @@ import { createTheme } from '@mui/material/styles'
 export const NAVY = '#090E2F'   // primary: sidebar, main buttons, headings
 export const GOLD = '#D3AF37'   // page accent: secondary buttons, active nav
 
+// Winter theme: same roles as NAVY and GOLD, in cool tones
+export const WINTER_NAVY = '#0E2A47'   // deep winter-night blue
+export const FROST = '#A8C5F0'         // winter sky blue (replaces gold; distinct from recipient colors)
 // Neon colors for RECIPIENTS ONLY (card stripe, idea chips, budget bar).
 // Always pair them with navy text: white text on neon is hard to read.
 export const RECIPIENT_COLORS = [
@@ -28,35 +31,44 @@ export function recipientColor(colorIndex) {
 }
 
 
-// ─── THEME ─────────────────────────────────────────────────────────────
-const theme = createTheme({
-    palette: {
-        primary: { main: NAVY, contrastText: '#FFFFFF' },
-        secondary: { main: GOLD, contrastText: NAVY },
-        error: { main: '#D62839' },   // over-budget warnings, form errors
-        background: {
-            default: '#F5F7FB',         // soft off-white page, so neon pops
-            paper: '#FFFFFF',           // cards and dialogs
+// ─── THEMES ────────────────────────────────────────────────────────────
+// Builds a theme from three colors, so regular and winter share everything else
+function makeTheme({ primary, accent, page }) {
+    return createTheme({
+        palette: {
+            primary: { main: primary, contrastText: '#FFFFFF' },
+            secondary: { main: accent, contrastText: NAVY },   // dark text on gold or frost
+            error: { main: '#D62839' },   // over-budget warnings, form errors
+            background: {
+                default: page,              // soft page color, so neon pops
+                paper: '#FFFFFF',           // cards and dialogs
+            },
+            text: {
+                primary: '#0F1E33',
+                secondary: '#55627A',
+            },
         },
-        text: {
-            primary: '#0F1E33',
-            secondary: '#55627A',
+        typography: {
+            fontFamily: '"Nunito", system-ui, sans-serif',
+            // Serif headings, matching the "quietcart" title in the pitch
+            h1: { fontFamily: '"DM Serif Display", Georgia, serif' },
+            h2: { fontFamily: '"DM Serif Display", Georgia, serif' },
+            h3: { fontFamily: '"DM Serif Display", Georgia, serif' },
+            h4: { fontFamily: '"DM Serif Display", Georgia, serif' },
+            h5: { fontFamily: '"DM Serif Display", Georgia, serif' },
+            // MUI buttons default to ALL CAPS - changed to normal case:
+            button: { textTransform: 'none', fontWeight: 600 },
         },
-    },
-    typography: {
-        fontFamily: '"Nunito", system-ui, sans-serif',
-        // Serif headings, matching the "quietcart" title in the pitch
-        h1: { fontFamily: '"DM Serif Display", Georgia, serif' },
-        h2: { fontFamily: '"DM Serif Display", Georgia, serif' },
-        h3: { fontFamily: '"DM Serif Display", Georgia, serif' },
-        h4: { fontFamily: '"DM Serif Display", Georgia, serif' },
-        h5: { fontFamily: '"DM Serif Display", Georgia, serif' },
-        // MUI buttons default to ALL CAPS - changed to normal case:
-        button: { textTransform: 'none', fontWeight: 600 },
-    },
 
-    // Rounded corners for cards, buttons, and inputs:
-    shape: { borderRadius: 3 },
-})
+        // Rounded corners for cards, buttons, and inputs:
+        shape: { borderRadius: 3 },
+    })
+}
 
-export default theme
+export const themes = {
+    regular: makeTheme({ primary: NAVY, accent: GOLD, page: '#F5F7FB' }),
+    winter: makeTheme({ primary: WINTER_NAVY, accent: FROST, page: '#EEF4FA' }),
+}
+
+// The default export stays the regular theme, so nothing breaks before the toggle exists
+export default themes.regular

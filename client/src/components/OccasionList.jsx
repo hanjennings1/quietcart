@@ -11,12 +11,12 @@
  */
 
 import { Box, Chip, IconButton, Stack, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { alpha, useTheme } from '@mui/material/styles'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import dayjs from 'dayjs'
 
-import { GOLD, NAVY, recipientColor } from '../theme.js'
+import { NAVY, recipientColor } from '../theme.js'
 import { formatCountdown } from '../utils/format.js'
 import { describeRule, isMoving } from '../utils/rules.js'
 
@@ -26,6 +26,9 @@ const SOON_DAYS = 14
 export default function OccasionList({
     occasions, color, onEdit, onDelete, showRecipient = false,
 }) {
+    const theme = useTheme()                                // the active theme (regular or winter)
+    const holidayColor = theme.palette.secondary.main       // gold, or frost in winter
+
     if (occasions.length === 0) {
         return <Typography color="text.secondary">No occasions yet.</Typography>
     }
@@ -35,9 +38,9 @@ export default function OccasionList({
             {occasions.map((occasion) => {
                 const soon = occasion.days_until >= 0 && occasion.days_until <= SOON_DAYS
                 // The row's color: a passed-in color wins (recipient page); otherwise the
-                // recipient's own color (matches their dashboard card), or gold for holidays
+                // recipient's own color (matches their dashboard card), or the theme's accent for holidays
                 const rowColor = color
-                    ?? (occasion.recipient_id ? recipientColor(occasion.recipient_color) : GOLD)
+                    ?? (occasion.recipient_id ? recipientColor(occasion.recipient_color) : holidayColor)
                 const next = dayjs(occasion.next_date)
                 return (
                     <Box
