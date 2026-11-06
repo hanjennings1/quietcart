@@ -27,13 +27,14 @@ quietcart is a year-round gift planner. The best gift ideas come up in passing (
 - Search recipients by name, relationship, or interest
 
 **Interests (many-to-many)**
-- Tag recipients with interest chips; typing an existing label reuses it instead of creating a duplicate
+- Tag recipients with interest chips; labels are saved in lowercase, so typing an existing label (even "Cats" for "cats") reuses it instead of creating a duplicate
 - See everyone who shares an interest, and filter by interests shared by 2+ recipients
 
 **Occasions and planning**
 - Birthdays (linked to one recipient) and holidays (for anyone), one-time or yearly
 - Countdowns ("In 6 days"), with gift ideas assigned to an occasion
 - A month calendar with each day's occasions; click a day to add one, or a label to edit it
+- Moving holidays set by a rule, like Mother's Day (2nd Sunday of May) or Father's Day (3rd Sunday of June); the date is worked out for every year
 
 **Dashboard**
 - Totals, a **Coming up** list of the next 3 occasions, each recipient's chips and top ideas, and recently saved ideas
@@ -45,7 +46,7 @@ quietcart is a year-round gift planner. The best gift ideas come up in passing (
 | Backend | Python, Flask, Flask-SQLAlchemy, Flask-Migrate (Alembic), Flask-Bcrypt, Flask sessions, psycopg 3, gunicorn |
 | Database | PostgreSQL (Neon in production) |
 | Frontend | React (Vite), React Router, React Context, Material UI, dayjs |
-| Testing | pytest (52 tests), Postman, curl |
+| Testing | pytest (63 tests), Postman, curl |
 | Deployment | Render (web service) + Neon (database) |
 
 ## Setup
@@ -109,7 +110,7 @@ Open `http://localhost:5173`. Vite forwards `/api` requests to Flask, so both se
 
 | Username | Password | What's there |
 |---|---|---|
-| `hannah` | `giftsecret1` | 3 recipients with gifts, budgets, interests, birthdays, a housewarming, and Christmas |
+| `hannah` | `giftsecret1` | 3 recipients with gifts, budgets, interests, birthdays, a housewarming, Christmas, and Mother's and Father's Day (moving dates) |
 | `sam` | `giftsecret1` | 1 recipient with a birthday, used to test that users can't see each other's data |
 
 ### 5. Run the tests
@@ -119,7 +120,7 @@ cd server
 pipenv run pytest
 ```
 
-52 tests cover authentication, ownership rules, interest chips, occasions, and recipient colors. They use `quietcart_test`, so your development data is never touched.
+63 tests cover authentication, ownership rules, interest chips, occasions (including moving dates), and recipient colors. They use `quietcart_test`, so your development data is never touched.
 
 ## API routes
 
@@ -144,9 +145,9 @@ All routes start with `/api` and return errors as `{"error": "message"}`. Every 
 | POST | `/api/recipients/<id>/interests` | Add an interest to a recipient (reuses an existing label) |
 | DELETE | `/api/recipients/<id>/interests/<interest_id>` | Remove an interest (deleted when no one has it) |
 | GET | `/api/occasions` | List occasions, soonest first, with countdowns |
-| POST | `/api/occasions` | Add a birthday (with `recipient_id`) or holiday (without) |
+| POST | `/api/occasions` | Add a birthday (with `recipient_id`) or holiday (without), with a fixed `date` or a moving rule (`rule_week`, `rule_weekday`, `rule_month`) |
 | GET | `/api/occasions/<id>` | One occasion with its assigned gifts |
-| PATCH | `/api/occasions/<id>` | Update an occasion |
+| PATCH | `/api/occasions/<id>` | Update an occasion, including switching between a date and a moving rule |
 | DELETE | `/api/occasions/<id>` | Delete an occasion (its gifts are kept, just unassigned) |
 | GET | `/api/dashboard` | Totals, each recipient's ideas, recent ideas, and upcoming occasions |
 
@@ -189,7 +190,6 @@ pipenv requirements > requirements.txt
 
 ## Known limitations
 
-- Interest chips display in lowercase (labels are lowercased so "Cats" and "cats" count as the same chip).
 - The Recipients page only shows interests shared by 2+ recipients in its filter row.
 - Deleting a recipient also deletes their gift history.
 - Budgets and prices are in USD only.
@@ -198,7 +198,6 @@ pipenv requirements > requirements.txt
 ## Future ideas
 
 - Gift history with a "given before" warning, and archiving recipients instead of deleting them
-- Rule-based dates for moving holidays (like Mother's Day)
 - Account settings (change password, delete account)
 - Occasions listed beside the calendar instead of below it
 - A seasonal Winter theme toggle
